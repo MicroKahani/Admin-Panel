@@ -21,11 +21,11 @@ import {
   FormControl,
   InputLabel,
   Chip,
-  LinearProgress,
   IconButton,
   Alert,
+  Stack,
 } from '@mui/material';
-import { Upload, Delete, Edit, PlayArrow, CloudUpload } from '@mui/icons-material';
+import { Upload, Delete, CloudUpload, Image as ImageIcon } from '@mui/icons-material';
 import { getAllVideos, uploadVideo, updateVideo, deleteVideo, getAllSeasons } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -33,7 +33,7 @@ interface Video {
   _id: string;
   title: string;
   description?: string;
-  thumbnail?: string;
+  thumbnailUrl?: string;
   type: 'reel' | 'episode';
   status: 'uploading' | 'processing' | 'completed' | 'failed';
   isPublished: boolean;
@@ -45,8 +45,9 @@ const VideoManagementPage: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+  const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -81,7 +82,7 @@ const VideoManagementPage: React.FC = () => {
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       // Validate file size (max 500MB)
@@ -97,12 +98,39 @@ const VideoManagementPage: React.FC = () => {
         return;
       }
 
-      setSelectedFile(file);
+      setSelectedVideoFile(file);
+    }
+  };
+
+  const handleThumbnailFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Thumbnail size must be less than 5MB');
+        return;
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Only JPG, JPEG, and PNG files are allowed');
+        return;
+      }
+
+      setSelectedThumbnailFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setThumbnailPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) {
+    if (!selectedVideoFile) {
       setError('Please select a video file');
       return;
     }
@@ -117,10 +145,15 @@ const VideoManagementPage: React.FC = () => {
 
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('video', selectedFile);
+      formDataToSend.append('video', selectedVideoFile);
       formDataToSend.append('title', formData.title);
       formDataToSend.append('description', formData.description);
       formDataToSend.append('type', formData.type);
+      
+      // Add thumbnail if selected
+      if (selectedThumbnailFile) {
+        formDataToSend.append('thumbnail', selectedThumbnailFile);
+      }
       
       if (formData.type === 'episode') {
         formDataToSend.append('seasonId', formData.seasonId);
@@ -141,7 +174,9 @@ const VideoManagementPage: React.FC = () => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setSelectedFile(null);
+    setSelectedVideoFile(null);
+    setSelectedThumbnailFile(null);
+    setThumbnailPreview('');
     setFormData({
       title: '',
       description: '',
@@ -205,7 +240,7 @@ const VideoManagementPage: React.FC = () => {
               <CardMedia
                 component="img"
                 height="180"
-                image={video.thumbnail || 'https://via.placeholder.com/300x180?text=No+Thumbnail'}
+                image={video.thumbnailUrl || 'https://via.placeholder.com/300x180?text=No+Thumbnail'}
                 alt={video.title}
               />
               <CardContent>
@@ -267,75 +302,124 @@ const VideoManagementPage: React.FC = () => {
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-          <Button
-            variant="outlined"
-            component="label"
-            fullWidth
-            sx={{ mt: 2, mb: 2, py: 2 }}
-          >
-            <Upload sx={{ mr: 1 }} />
-            {selectedFile ? selectedFile.name : 'Select Video (MP4/MOV, max 500MB)'}
-            <input type="file" hidden accept="video/mp4,video/quicktime" onChange={handleFileSelect} />
-          </Button>
-
-          <TextField
-            fullWidth
-            label="Title"
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            sx={{ mb: 2 }}
-            required
-          />
-
-          <TextField
-            fullWidth
-            label="Description"
-            multiline
-            rows={3}
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Type</InputLabel>
-            <Select
-              value={formData.type}
-              label="Type"
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+          <Stack spacing={2} sx={{ mt: 2 }}>
+            {/* Video Upload */}
+            <Button
+              variant="outlined"
+              component="label"
+              fullWidth
+              sx={{ py: 2 }}
             >
-              <MenuItem value="reel">Reel</MenuItem>
-              <MenuItem value="episode">Episode</MenuItem>
-            </Select>
-          </FormControl>
-
-          {formData.type === 'episode' && (
-            <>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Season</InputLabel>
-                <Select
-                  value={formData.seasonId}
-                  label="Season"
-                  onChange={(e) => setFormData({ ...formData, seasonId: e.target.value })}
-                >
-                  {seasons.map((season) => (
-                    <MenuItem key={season._id} value={season._id}>
-                      {season.title}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <TextField
-                fullWidth
-                label="Episode Number"
-                type="number"
-                value={formData.episodeNumber}
-                onChange={(e) => setFormData({ ...formData, episodeNumber: e.target.value })}
-                sx={{ mb: 2 }}
+              <Upload sx={{ mr: 1 }} />
+              {selectedVideoFile ? selectedVideoFile.name : 'Select Video (MP4/MOV, max 500MB)'}
+              <input 
+                type="file" 
+                hidden 
+                accept="video/mp4,video/quicktime" 
+                onChange={handleVideoFileSelect} 
               />
-            </>
-          )}
+            </Button>
+
+            {/* Thumbnail Upload */}
+            <Box>
+              <Button
+                variant="outlined"
+                component="label"
+                fullWidth
+                sx={{ py: 2 }}
+                color={selectedThumbnailFile ? 'success' : 'primary'}
+              >
+                <ImageIcon sx={{ mr: 1 }} />
+                {selectedThumbnailFile ? 'Thumbnail Selected' : 'Upload Custom Thumbnail (Optional)'}
+                <input 
+                  type="file" 
+                  hidden 
+                  accept="image/jpeg,image/jpg,image/png" 
+                  onChange={handleThumbnailFileSelect} 
+                />
+              </Button>
+              
+              {thumbnailPreview && (
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                  <img 
+                    src={thumbnailPreview} 
+                    alt="Thumbnail preview" 
+                    style={{ 
+                      maxWidth: '100%', 
+                      maxHeight: '200px',
+                      borderRadius: '8px',
+                      border: '1px solid #ddd'
+                    }} 
+                  />
+                  <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                    Preview
+                  </Typography>
+                </Box>
+              )}
+              
+              {!selectedThumbnailFile && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  If no thumbnail is provided, one will be auto-generated from the video
+                </Typography>
+              )}
+            </Box>
+
+            <TextField
+              fullWidth
+              label="Title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+            />
+
+            <TextField
+              fullWidth
+              label="Description"
+              multiline
+              rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Type</InputLabel>
+              <Select
+                value={formData.type}
+                label="Type"
+                onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+              >
+                <MenuItem value="reel">Reel</MenuItem>
+                <MenuItem value="episode">Episode</MenuItem>
+              </Select>
+            </FormControl>
+
+            {formData.type === 'episode' && (
+              <>
+                <FormControl fullWidth>
+                  <InputLabel>Season</InputLabel>
+                  <Select
+                    value={formData.seasonId}
+                    label="Season"
+                    onChange={(e) => setFormData({ ...formData, seasonId: e.target.value })}
+                  >
+                    {seasons.map((season) => (
+                      <MenuItem key={season._id} value={season._id}>
+                        {season.title}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  fullWidth
+                  label="Episode Number"
+                  type="number"
+                  value={formData.episodeNumber}
+                  onChange={(e) => setFormData({ ...formData, episodeNumber: e.target.value })}
+                />
+              </>
+            )}
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>

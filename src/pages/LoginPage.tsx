@@ -1,4 +1,3 @@
-// frontend/src/pages/LoginPage.tsx
 import React, { useState } from 'react';
 import {
   Box,
@@ -33,12 +32,14 @@ const LoginPage: React.FC = () => {
 
     try {
       const response = await sendOTP(email);
+      console.log('OTP Response:', response); // Debug log
+      
+      // response is already res.data from API service
       if (response.success) {
-        setSuccess('OTP sent to your email!');
+        setSuccess(response.message || 'OTP sent to your email!');
         setStep('otp');
-        setCountdown(180); // 3 minutes
+        setCountdown(response.expiresIn || 180);
 
-        // Start countdown
         const timer = setInterval(() => {
           setCountdown((prev) => {
             if (prev <= 1) {
@@ -48,8 +49,13 @@ const LoginPage: React.FC = () => {
             return prev - 1;
           });
         }, 1000);
+      } else {
+        console.error('OTP failed - response:', response);
+        setError(response.message || 'Failed to send OTP');
       }
     } catch (err: any) {
+      console.error('OTP Error:', err);
+      console.error('Error response:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to send OTP');
     } finally {
       setLoading(false);
@@ -63,12 +69,25 @@ const LoginPage: React.FC = () => {
 
     try {
       const response = await verifyOTP(email, otp);
+      console.log('Verify OTP Response:', response); // Debug log
+      
+      // response is already res.data from API service
       if (response.success) {
-        // Cookie is set automatically by the backend
-        setAdmin(response.data.admin);
-        navigate('/dashboard');
+        console.log('OTP verified! Admin data:', response.data);
+        
+        // Set admin in context first
+        await setAdmin(response.data.admin);
+        console.log('Admin set in context, navigating to dashboard...');
+        
+        // Navigate to dashboard
+        navigate('/dashboard', { replace: true });
+      } else {
+        console.error('OTP verification failed:', response);
+        setError(response.message || 'Invalid OTP');
       }
     } catch (err: any) {
+      console.error('Verify OTP Error:', err);
+      console.error('Error response:', err.response?.data);
       setError(err.response?.data?.message || 'Invalid OTP');
     } finally {
       setLoading(false);

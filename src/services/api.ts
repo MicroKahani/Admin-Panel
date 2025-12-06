@@ -4,15 +4,17 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  withCredentials: true, // Important for cookies
+  withCredentials: true, // CRITICAL: Send cookies with every request
 });
 
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Redirect to login on unauthorized
+    // Only redirect to login if it's NOT the /me endpoint
+    // This prevents redirect loop during initial auth check
+    if (error.response?.status === 401 && !error.config.url?.includes('/auth/me')) {
+      console.log('API: 401 error, redirecting to login');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -74,7 +76,7 @@ export async function deleteAdmin(adminId: string) {
 
 // Video Management APIs
 export async function uploadVideo(formData: FormData) {
-  const res = await api.post('/videos', formData, {
+  const res = await api.post('/admin/videos', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return res.data;
