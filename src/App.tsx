@@ -11,6 +11,9 @@ import LoginPage from './pages/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import RoleManagementPage from './pages/RoleManagementPage';
 import VideoManagementPage from './pages/VideoManagementPage';
+import WebSeriesPage from './pages/WebSeriesPage';
+import EpisodePlayerPage from './pages/EpisodePlayerPage';
+import SeasonDetailPage from './pages/SeasonDetailPage';
 
 const drawerWidth = 220;
 
@@ -28,6 +31,7 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Video Management', icon: <DashboardIcon />, path: '/video-management' },
   { text: 'Role Management', icon: <QuizIcon />, path: '/role-management' },
+  { text: 'Web Series', icon: <DashboardIcon />, path: '/webseries' },
   { text: 'General Notification', icon: <NotificationsIcon />, path: '/general-notification' },
   { text: 'Automated Notifications', icon: <ScheduleIcon />, path: '/automated-notifications' },
 ];
@@ -104,6 +108,9 @@ const MainLayout: React.FC = () => {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/role-management" element={<RoleManagementPage />} />
             <Route path="/video-management" element={<VideoManagementPage />} />
+            <Route path="/webseries" element={<WebSeriesPage />} />
+            <Route path="/webseries/:seasonId" element={<SeasonDetailPage />} />
+            <Route path="/episode/:episodeId" element={<EpisodePlayerPage />} />
             {/* Uncomment when these pages are ready */}
             {/* <Route path="/analytics" element={<AnalyticsPage />} /> */}
             {/* <Route path="/user-analytics" element={<UserAnalyticsPage />} /> */}
