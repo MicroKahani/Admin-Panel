@@ -209,5 +209,76 @@ export const createEpisode = (seasonId: string, data: FormData) => api.post(`/se
 // Auth APIs (if needed)
 export const login = (credentials: { email: string; password: string }) => api.post('/auth/login', credentials);
 
+// FCM Campaigns
+export const createFcmCampaign = (data: {
+  title: string;
+  body: string;
+  imageUrl?: string;
+  deepLink?: string;
+  data?: Record<string, string>;
+  priority?: 'normal' | 'high';
+  targetType: 'all_users' | 'by_user_ids' | 'by_tokens';
+  userIds?: string[];
+  tokens?: string[];
+}) => api.post('/notifications/campaigns', data);
+
+export const getFcmCampaigns = (params?: { page?: number; limit?: number }) =>
+  api.get('/notifications/campaigns', { params });
+
+// ---- Automated / General Notifications (frontend stubs) ----
+// These help the existing pages compile and can be wired to real
+// backend endpoints when available.
+
+export const getSchedulerStatus = async () =>
+  Promise.resolve({
+    data: {
+      isInitialized: false,
+      registrationReminders: '19:00',
+      startNotifications: '*/15 * * * *',
+      timezone: 'UTC',
+    },
+  });
+
+export const triggerRegistrationReminders = async () =>
+  Promise.resolve({ data: { success: true } });
+
+export const triggerStartNotifications = async () =>
+  Promise.resolve({ data: { success: true } });
+
+export const getUpcomingNotifications = async () =>
+  Promise.resolve({
+    data: {
+      summary: { totalRegistrationReminders: 0, totalStartNotifications: 0 },
+      registrationReminders: {},
+      startNotifications: {},
+    },
+  });
+
+export const getNotificationStats = async () =>
+  Promise.resolve({
+    data: {
+      tomorrow: { registrationEnding: { events: 0, hackathons: 0, quizzes: 0, total: 0 } },
+      thisWeek: { starting: { events: 0, hackathons: 0, quizzes: 0, total: 0 } },
+      scheduler: { isInitialized: false, registrationReminders: '', startNotifications: '', timezone: 'UTC' },
+    },
+  });
+
+// Send a general notification by leveraging the FCM campaign endpoint
+export const sendGeneralNotification = (data: {
+  title: string;
+  body: string;
+  data?: Record<string, string>;
+  image?: string;
+  link?: string;
+}) =>
+  createFcmCampaign({
+    title: data.title,
+    body: data.body,
+    imageUrl: data.image,
+    deepLink: data.link,
+    data: data.data,
+    targetType: 'all_users',
+  });
+
 
 export default api;

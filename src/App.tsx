@@ -14,6 +14,9 @@ import VideoManagementPage from './pages/VideoManagementPage';
 import WebSeriesPage from './pages/WebSeriesPage';
 import EpisodePlayerPage from './pages/EpisodePlayerPage';
 import SeasonDetailPage from './pages/SeasonDetailPage';
+import FcmCampaignPage from './pages/FcmCampaignPage';
+import GeneralNotificationPage from './pages/GeneralNotificationPage';
+import AutomatedNotificationsPage from './pages/AutomatedNotificationsPage';
 
 const drawerWidth = 220;
 
@@ -34,6 +37,7 @@ const menuItems = [
   { text: 'Web Series', icon: <DashboardIcon />, path: '/webseries' },
   { text: 'General Notification', icon: <NotificationsIcon />, path: '/general-notification' },
   { text: 'Automated Notifications', icon: <ScheduleIcon />, path: '/automated-notifications' },
+  { text: 'FCM Campaigns', icon: <NotificationsIcon />, path: '/fcm-campaigns' },
 ];
 
 const MainLayout: React.FC = () => {
@@ -111,11 +115,9 @@ const MainLayout: React.FC = () => {
             <Route path="/webseries" element={<WebSeriesPage />} />
             <Route path="/webseries/:seasonId" element={<SeasonDetailPage />} />
             <Route path="/episode/:episodeId" element={<EpisodePlayerPage />} />
-            {/* Uncomment when these pages are ready */}
-            {/* <Route path="/analytics" element={<AnalyticsPage />} /> */}
-            {/* <Route path="/user-analytics" element={<UserAnalyticsPage />} /> */}
-            {/* <Route path="/general-notification" element={<GeneralNotificationPage />} /> */}
-            {/* <Route path="/automated-notifications" element={<AutomatedNotificationsPage />} /> */}
+            <Route path="/general-notification" element={<GeneralNotificationPage />} />
+            <Route path="/automated-notifications" element={<AutomatedNotificationsPage />} />
+            <Route path="/fcm-campaigns" element={<FcmCampaignPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Box>
