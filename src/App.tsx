@@ -5,6 +5,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import QuizIcon from '@mui/icons-material/Quiz';
 import ScheduleIcon from '@mui/icons-material/Schedule';
+import ViewCarouselIcon from '@mui/icons-material/ViewCarousel';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
@@ -17,7 +18,7 @@ import SeasonDetailPage from './pages/SeasonDetailPage';
 import FcmCampaignPage from './pages/FcmCampaignPage';
 import GeneralNotificationPage from './pages/GeneralNotificationPage';
 import AutomatedNotificationsPage from './pages/AutomatedNotificationsPage';
-
+import CarouselManagementPage from './pages/CarouselManagementPage';
 const drawerWidth = 220;
 
 const theme = createTheme({
@@ -35,11 +36,11 @@ const menuItems = [
   { text: 'Video Management', icon: <DashboardIcon />, path: '/video-management' },
   { text: 'Role Management', icon: <QuizIcon />, path: '/role-management' },
   { text: 'Web Series', icon: <DashboardIcon />, path: '/webseries' },
+  { text: 'Carousel Management', icon: <ViewCarouselIcon />, path: '/carousel-management' },
   { text: 'General Notification', icon: <NotificationsIcon />, path: '/general-notification' },
   { text: 'Automated Notifications', icon: <ScheduleIcon />, path: '/automated-notifications' },
   { text: 'FCM Campaigns', icon: <NotificationsIcon />, path: '/fcm-campaigns' },
 ];
-
 const MainLayout: React.FC = () => {
   const { isAuthenticated, isLoading, logout, admin } = useAuth(); // Changed user to admin
   const location = useLocation();
@@ -115,6 +116,7 @@ const MainLayout: React.FC = () => {
             <Route path="/webseries" element={<WebSeriesPage />} />
             <Route path="/webseries/:seasonId" element={<SeasonDetailPage />} />
             <Route path="/episode/:episodeId" element={<EpisodePlayerPage />} />
+            <Route path="/carousel-management" element={<CarouselManagementPage />} />
             <Route path="/general-notification" element={<GeneralNotificationPage />} />
             <Route path="/automated-notifications" element={<AutomatedNotificationsPage />} />
             <Route path="/fcm-campaigns" element={<FcmCampaignPage />} />

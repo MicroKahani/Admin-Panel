@@ -200,11 +200,21 @@ export const getEpisodesBySeasonAdmin = async (seasonId: string) => {
 //   api.delete(`/videos/${videoId}`);
 // Web Series / Season APIs (from WebSeriesPage)
 
-
-
 export const createEpisode = (seasonId: string, data: FormData) => api.post(`/seasons/${seasonId}/episodes`, data, {
   headers: { 'Content-Type': 'multipart/form-data' },
 });
+
+// Carousel Management APIs
+export const getAllCarouselItems = () => api.get('/carousel');
+export const getActiveCarouselItems = () => api.get('/carousel/active');
+export const createCarouselItem = (data: FormData) => api.post('/carousel', data, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+});
+export const updateCarouselItem = (id: string, data: FormData) => api.put(`/carousel/${id}`, data, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+});
+export const deleteCarouselItem = (id: string) => api.delete(`/carousel/${id}`);
+export const reorderCarouselItems = (items: { id: string; order: number }[]) => api.put('/carousel/reorder', { items });
 
 // Auth APIs (if needed)
 export const login = (credentials: { email: string; password: string }) => api.post('/auth/login', credentials);
