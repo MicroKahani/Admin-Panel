@@ -129,6 +129,18 @@ export async function updateVideo(
   return res.data;
 }
 
+export async function updateVideoAdStatus(
+  videoId: string,
+  adStatus: 'locked' | 'unlocked'
+) {
+  const res = await api.patch(
+    `/admin/videos/${videoId}/ad-status`,
+    { adStatus }
+  );
+  return res.data;
+}
+
+
 export async function deleteVideo(videoId: string) {
   const res = await api.delete(`/admin/videos/${videoId}`);
   return res.data;
