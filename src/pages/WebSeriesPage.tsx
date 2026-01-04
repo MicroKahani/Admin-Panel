@@ -243,45 +243,85 @@ const WebSeriesPage: React.FC = () => {
           <Grid container spacing={3}>
             {seasons.map((season) => (
           <Grid item xs={12} sm={6} md={4} key={season._id}>
-            <Card 
-              sx={{ 
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 6,
-                }
-              }}
-            >
+            <Card
+                sx={{
+                  width: 320,          // 🔒 SAME WIDTH (same as video page)
+                  height: 460,         // 🔒 SAME HEIGHT
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  mx: 'auto',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: 6,
+                  },
+                }}
+              >
+
               <CardMedia
-                component="img"
-                height="200"
-                image={season.thumbnail || 'https://via.placeholder.com/300x200?text=No+Thumbnail'}
-                alt={season.title}
-                onClick={() => handleViewSeason(season._id)}
-              />
-              <CardContent onClick={() => handleViewSeason(season._id)}>
+                  component="img"
+                  height="200"
+                  sx={{
+                    width: '100%',
+                    objectFit: 'cover',
+                  }}
+                  image={season.thumbnail || 'https://via.placeholder.com/300x200?text=No+Thumbnail'}
+                  alt={season.title}
+                  onClick={() => handleViewSeason(season._id)}
+                />
+
+              <CardContent
+                    onClick={() => handleViewSeason(season._id)}
+                    sx={{
+                      flexGrow: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <Chip label={`Season ${season.seasonNumber}`} size="small" color="primary" />
                   <Chip label={`${season.episodeCount} Episodes`} size="small" variant="outlined" />
                 </Box>
-                <Typography variant="h6" fontWeight="bold" noWrap>
+                <Typography
+                    variant="h6"
+                    fontWeight="bold"
+                    sx={{
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+
                   {season.title}
                 </Typography>
-                <Typography 
-                  variant="body2" 
-                  color="text.secondary" 
-                  sx={{
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {season.description || 'No description'}
-                </Typography>
+                <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      height: 40,        // 🔒 SAME as video page
+                    }}
+                  >
+                    {season.description || 'No description'}
+                  </Typography>
+
               </CardContent>
-              <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+              <CardActions
+                    sx={{
+                      mt: 'auto',
+                      minHeight: 52,     // 🔒 SAME footer height
+                      justifyContent: 'space-between',
+                      px: 2,
+                      pb: 2,
+                    }}
+                  >
+
                 <Button
                   size="small"
                   startIcon={<Visibility />}

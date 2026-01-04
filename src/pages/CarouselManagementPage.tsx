@@ -358,25 +358,40 @@ const CarouselManagementPage: React.FC = () => {
                 <Grid item xs={12} key={carousel._id}>
                   <Card 
                     sx={{ 
+                      width: '100%',
+                      maxWidth: 1000,          // 🔒 SAME WIDTH for all cards
+                      height: 220,             // 🔒 SAME HEIGHT
+                      mx: 'auto',              // center card in row
                       display: 'flex',
                       flexDirection: { xs: 'column', md: 'row' },
+                      overflow: 'hidden',
                       transition: 'box-shadow 0.2s',
                       '&:hover': {
                         boxShadow: 6,
-                      }
+                      },
                     }}
                   >
+
                     <CardMedia
                       component="img"
                       sx={{ 
-                        width: { xs: '100%', md: 200 }, 
-                        height: { xs: 200, md: 'auto' },
-                        objectFit: 'cover'
+                        width: { xs: '100%', md: 220 }, // fixed image column
+                        height: 220,                    // 🔒 match card height
+                        objectFit: 'cover',
+                        flexShrink: 0,
                       }}
                       image={carousel.imageUrl}
                       alt={carousel.title}
                     />
-                    <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        flexGrow: 1,
+                      }}
+                    >
+
                       <CardContent sx={{ flex: '1 0 auto' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                           <Chip 
@@ -397,7 +412,17 @@ const CarouselManagementPage: React.FC = () => {
                             <Chip label="Inactive" size="small" color="default" />
                           )}
                         </Box>
-                        <Typography component="div" variant="h6" fontWeight="bold">
+                        <Typography
+                        component="div"
+                        variant="h6"
+                        fontWeight="bold"
+                        sx={{
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+
                           {carousel.title}
                         </Typography>
                         <Typography 
@@ -419,7 +444,15 @@ const CarouselManagementPage: React.FC = () => {
                           </Typography>
                         )}
                       </CardContent>
-                      <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+                      <CardActions
+                            sx={{
+                              minHeight: 52,           // 🔒 uniform footer
+                              justifyContent: 'space-between',
+                              px: 2,
+                              pb: 2,
+                            }}
+                          >
+
                         <Box>
                           <IconButton 
                             size="small" 
