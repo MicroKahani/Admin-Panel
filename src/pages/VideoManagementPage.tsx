@@ -26,7 +26,7 @@ import {
   Stack,
 } from '@mui/material';
 import { Upload, Delete, CloudUpload, Image as ImageIcon } from '@mui/icons-material';
-import { getAllVideos, uploadVideo, updateVideo, deleteVideo, getAllSeasons } from '../services/api';
+import { getAllVideos, uploadVideo, updateVideo, deleteVideo, getAllSeasons,updateVideoAdStatus } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Video {
@@ -37,6 +37,7 @@ interface Video {
   type: 'reel' | 'episode';
   status: 'uploading' | 'processing' | 'completed' | 'failed';
   isPublished: boolean;
+  adStatus: 'locked' | 'unlocked';
   duration: number;
   createdAt: string;
 }
@@ -196,6 +197,19 @@ const VideoManagementPage: React.FC = () => {
     }
   };
 
+  const handleAdStatusChange = async (
+  videoId: string,
+  adStatus: 'locked' | 'unlocked'
+) => {
+  try {
+    await updateVideoAdStatus(videoId, adStatus);
+    fetchVideos(); // refresh list
+  } catch (err: any) {
+    alert(err.response?.data?.message || 'Failed to update ad status');
+  }
+};
+
+
   const handleDelete = async (videoId: string) => {
     if (!window.confirm('Are you sure you want to delete this video?')) return;
 
@@ -236,21 +250,60 @@ const VideoManagementPage: React.FC = () => {
       <Grid container spacing={3}>
         {videos.map((video) => (
           <Grid item xs={12} sm={6} md={4} key={video._id}>
-            <Card>
+
+            <Card
+              sx={{
+                width: 320,          // 🔒 SAME WIDTH for all cards
+                height: 460,         // 🔒 SAME HEIGHT for all cards
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                mx: 'auto',          // center card inside grid column
+              }}
+>
+
               <CardMedia
                 component="img"
-                height="180"
-                image={video.thumbnailUrl || 'https://via.placeholder.com/300x180?text=No+Thumbnail'}
+                height="200"
+                sx={{
+                  width: '100%',
+                  objectFit: 'cover',
+                }}
+                image={
+                  video.thumbnailUrl ||
+                  'https://via.placeholder.com/300x200?text=No+Thumbnail'
+                }
                 alt={video.title}
               />
-              <CardContent>
-                <Typography variant="h6" noWrap>
+              <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                <Typography
+                    variant="h6"
+                    sx={{
+                      mb: 1,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+
                   {video.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {video.description || 'No description'}
-                </Typography>
-                <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mb: 1,
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      height: 40,          // 🔒 SAME height for all
+                    }}
+                  >
+                    {video.description || 'No description'}
+                  </Typography>
+
+                <Box sx={{ mt: 'auto', display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                   <Chip label={video.type} size="small" />
                   <Chip
                     label={video.status}
@@ -259,8 +312,34 @@ const VideoManagementPage: React.FC = () => {
                   />
                   {video.isPublished && <Chip label="Published" size="small" color="success" />}
                 </Box>
+                {hasPermission('write') && (
+  <FormControl size="small" fullWidth sx={{ mt: 1 }}>
+    <InputLabel>Ad Status</InputLabel>
+    <Select
+      value={video.adStatus}
+      label="Ad Status"
+      onChange={(e) =>
+        handleAdStatusChange(
+          video._id,
+          e.target.value as 'locked' | 'unlocked'
+        )
+      }
+    >
+      <MenuItem value="unlocked">Unlocked (No Ad)</MenuItem>
+      <MenuItem value="locked">Locked (Show Ad)</MenuItem>
+    </Select>
+  </FormControl>
+)}
+
               </CardContent>
-              <CardActions sx={{ justifyContent: 'space-between' }}>
+              <CardActions
+                  sx={{
+                    mt: 'auto',
+                    minHeight: 52,       // 🔒 uniform footer
+                    justifyContent: 'space-between',
+                  }}
+>
+
                 <Box>
                   {hasPermission('write') && video.status === 'completed' && (
                     <Button
