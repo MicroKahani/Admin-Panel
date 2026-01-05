@@ -57,6 +57,17 @@ interface Episode {
   createdAt: string;
 }
 
+// Helper to cache-bust episode thumbnails when the underlying file changes
+const getEpisodeThumbnailWithCacheBust = (thumbnailUrl: string | undefined, updatedAt: string | undefined, episodeNumber: number) => {
+  const base = thumbnailUrl || `https://via.placeholder.com/300x180?text=Episode+${episodeNumber}`;
+  try {
+    const ts = updatedAt ? new Date(updatedAt).getTime() : Date.now();
+    return `${base}?v=${ts}`;
+  } catch {
+    return `${base}?v=${Date.now()}`;
+  }
+};
+
 interface Season {
   _id: string;
   title: string;
@@ -402,7 +413,7 @@ const handleCloseDialog = () => {
                 <CardMedia
                   component="img"
                   height="180"
-                  image={episode.thumbnailUrl || `https://via.placeholder.com/300x180?text=Episode+${episode.episodeNumber}`}
+                  image={getEpisodeThumbnailWithCacheBust(episode.thumbnailUrl, (episode as any).updatedAt, episode.episodeNumber)}
                   alt={episode.title}
                 />
                 <IconButton

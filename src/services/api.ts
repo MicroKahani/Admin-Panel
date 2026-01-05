@@ -123,9 +123,13 @@ export async function getAllVideos(filters?: {
 
 export async function updateVideo(
   videoId: string,
-  data: { title?: string; description?: string; isPublished?: boolean }
+  data: { title?: string; description?: string; isPublished?: boolean } | FormData
 ) {
-  const res = await api.put(`/admin/videos/${videoId}`, data);
+  // Check if data is FormData (for thumbnail upload) or regular object
+  const isFormData = data instanceof FormData;
+  const res = await api.put(`/admin/videos/${videoId}`, data, {
+    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+  });
   return res.data;
 }
 
