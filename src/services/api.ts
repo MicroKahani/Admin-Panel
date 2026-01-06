@@ -2,15 +2,43 @@
 
 import axios from 'axios';
 
+const enableApiDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_LOGS === 'true';
+const logApi = (...args: any[]) => {
+  if (enableApiDebug) {
+    console.log('[API]', ...args);
+  }
+};
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   withCredentials: true, // CRITICAL: Send cookies with every request
 });
 
+api.interceptors.request.use((config) => {
+  logApi('Request', {
+    method: config.method,
+    url: config.url,
+    params: config.params,
+    hasData: Boolean(config.data),
+  });
+  return config;
+});
+
 // Response interceptor to handle errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    logApi('Response', {
+      url: response.config.url,
+      status: response.status,
+    });
+    return response;
+  },
   (error) => {
+    logApi('Error', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+    });
     // Only redirect to login if it's NOT the /me endpoint
     // This prevents redirect loop during initial auth check
     if (error.response?.status === 401 && !error.config.url?.includes('/auth/me')) {

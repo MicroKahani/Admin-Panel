@@ -59,14 +59,16 @@ const FcmCampaignPage: React.FC = () => {
   }, [data]);
 
   const fetchCampaigns = async () => {
+    console.log('[FCM UI] fetchCampaigns start');
     setCampaignsLoading(true);
     setCampaignsError('');
     try {
       const res: any = await getFcmCampaigns({ page: 1, limit: 10 });
       const list = Array.isArray(res?.data?.data) ? res.data.data : [];
       setCampaigns(list);
+      console.log('[FCM UI] fetchCampaigns success', { count: list.length });
     } catch (err: any) {
-      console.error(err);
+      console.error('[FCM UI] fetchCampaigns error', err);
       setCampaignsError(err?.response?.data?.message || 'Failed to load campaigns');
       setCampaigns([]);
     } finally {
@@ -95,6 +97,12 @@ const FcmCampaignPage: React.FC = () => {
         userIds: targetType === 'by_user_ids' ? userIds.split(',').map((id) => id.trim()).filter(Boolean) : undefined,
         tokens: targetType === 'by_tokens' ? tokens.split('\n').map((t) => t.trim()).filter(Boolean) : undefined,
       };
+      console.log('[FCM UI] create campaign submit', {
+        ...payload,
+        data: parsedData ? '[object]' : undefined,
+        userIdsCount: payload.userIds?.length,
+        tokensCount: payload.tokens?.length,
+      });
       await createFcmCampaign(payload);
       setSuccess(true);
       fetchCampaigns();
