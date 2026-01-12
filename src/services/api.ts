@@ -161,6 +161,21 @@ export async function updateVideo(
   return res.data;
 }
 
+export async function getVideoAnalytics(filters?: {
+  filter?: 'views' | 'comments' | 'likes' | 'coin_unlocks' | 'ad_unlocks' | 'total_unlocks';
+  sort?: 'asc' | 'desc';
+  limit?: number;
+  type?: 'reel' | 'episode' | 'series';
+}) {
+  const res = await api.get('/admin/videos/analytics', { params: filters });
+  return res.data;
+}
+
+export async function getVideoDetailedAnalytics(videoId: string) {
+  const res = await api.get(`/admin/videos/${videoId}/analytics`);
+  return res.data;
+}
+
 export async function updateVideoAdStatus(
   videoId: string,
   adStatus: 'locked' | 'unlocked'
@@ -334,5 +349,61 @@ export const sendGeneralNotification = (data: {
     targetType: 'all_users',
   });
 
+// Cashfree Revenue Analytics APIs
+export async function getCashfreeRevenueAnalytics(filters?: {
+  startDate?: string;
+  endDate?: string;
+  groupBy?: 'day' | 'month' | 'year';
+}) {
+  const res = await api.get('/admin/analytics/cashfree', { params: filters });
+  return res.data;
+}
+
+export async function getCashfreeTransactions(filters?: {
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  status?: 'pending' | 'completed' | 'failed';
+}) {
+  const res = await api.get('/admin/analytics/cashfree/transactions', { params: filters });
+  return res.data;
+}
+
+// User Management APIs
+export async function getAllUsers(filters?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'all' | 'active' | 'blocked' | 'comment_banned';
+}) {
+  const res = await api.get('/admin/users', { params: filters });
+  return res.data;
+}
+
+export async function getUserById(userId: string) {
+  const res = await api.get(`/admin/users/${userId}`);
+  return res.data;
+}
+
+export async function banUser(userId: string, banType: 'partial' | 'complete', reason?: string) {
+  const res = await api.post(`/admin/users/${userId}/ban`, { banType, reason });
+  return res.data;
+}
+
+export async function unbanUser(userId: string, banType?: 'partial' | 'complete') {
+  const res = await api.post(`/admin/users/${userId}/unban`, banType ? { banType } : {});
+  return res.data;
+}
+
+export async function updateUserStatus(userId: string, data: { isActive?: boolean; isBlocked?: boolean }) {
+  const res = await api.patch(`/admin/users/${userId}/status`, data);
+  return res.data;
+}
+
+// Dashboard Analytics API
+export async function getDashboardAnalytics() {
+  const res = await api.get('/admin/dashboard/analytics');
+  return res.data;
+}
 
 export default api;
