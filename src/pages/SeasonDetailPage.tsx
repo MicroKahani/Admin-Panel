@@ -40,6 +40,7 @@ import {
   deleteVideo
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import CastCrewManager from '../components/CastCrewManager';
 
 interface Episode {
   _id: string;
@@ -61,6 +62,15 @@ interface Season {
   thumbnail?: string;
   seasonNumber: number;
   episodeCount: number;
+  cast?: CastMember[];
+}
+
+interface CastMember {
+  id?: string;
+  name: string;
+  character: string;
+  image?: string;
+  role: 'actor' | 'crew';
 }
 
 const SeasonDetailPage: React.FC = () => {
@@ -80,6 +90,7 @@ const SeasonDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
+  const [castMembers, setCastMembers] = useState<CastMember[]>([]);
   const { hasPermission } = useAuth();
 
   useEffect(() => {
@@ -104,6 +115,9 @@ const SeasonDetailPage: React.FC = () => {
         console.log('Season data:', seasonData);
         if (seasonData && typeof seasonData === 'object') {
           setSeason(seasonData);
+          if (seasonData.cast && Array.isArray(seasonData.cast)) {
+            setCastMembers(seasonData.cast);
+          }
           console.log('Set season:', seasonData.title);
         } else {
           console.error('Season data is invalid:', seasonData);
@@ -377,6 +391,21 @@ const SeasonDetailPage: React.FC = () => {
           <Typography variant="body1">{season.description}</Typography>
         </Paper>
       )}
+
+      {/* Cast & Crew Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <CastCrewManager
+          castMembers={castMembers}
+          onCastChange={(newCastMembers) => {
+            setCastMembers(newCastMembers);
+            // Update season with new cast members
+            if (season) {
+              setSeason({ ...season, cast: newCastMembers });
+            }
+          }}
+          error={error}
+        />
+      </Paper>
 
       {/* Episodes Grid */}
       <Grid container spacing={3}>
