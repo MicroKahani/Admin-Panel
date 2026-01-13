@@ -1,4 +1,5 @@
 // frontend/src/pages/SeasonDetailPage.tsx
+//contains the add episode pop for each season
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -22,6 +23,8 @@ import {
   Chip,
   Breadcrumbs,
   Link,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -55,6 +58,17 @@ interface Episode {
   createdAt: string;
 }
 
+// Helper to cache-bust episode thumbnails when the underlying file changes
+const getEpisodeThumbnailWithCacheBust = (thumbnailUrl: string | undefined, updatedAt: string | undefined, episodeNumber: number) => {
+  const base = thumbnailUrl || `https://via.placeholder.com/300x180?text=Episode+${episodeNumber}`;
+  try {
+    const ts = updatedAt ? new Date(updatedAt).getTime() : Date.now();
+    return `${base}?v=${ts}`;
+  } catch {
+    return `${base}?v=${Date.now()}`;
+  }
+};
+
 interface Season {
   _id: string;
   title: string;
@@ -87,6 +101,7 @@ const SeasonDetailPage: React.FC = () => {
     description: '',
     episodeNumber: '',
   });
+  const [isAdLocked, setIsAdLocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
@@ -203,34 +218,40 @@ const SeasonDetailPage: React.FC = () => {
     }
   };
 
+
   const handleOpenDialog = () => {
-    const nextEpisodeNumber = episodes.length > 0
-      ? Math.max(...episodes.map(e => e.episodeNumber)) + 1
-      : 1;
+  const nextEpisodeNumber = episodes.length > 0
+    ? Math.max(...episodes.map(e => e.episodeNumber)) + 1
+    : 1;
 
-    setFormData({
-      title: '',
-      description: '',
-      episodeNumber: nextEpisodeNumber.toString(),
-    });
-    setSelectedVideoFile(null);
-    setSelectedThumbnailFile(null);
-    setThumbnailPreview('');
-    setOpenDialog(true);
-  };
+  setFormData({
+    title: '',
+    description: '',
+    episodeNumber: nextEpisodeNumber.toString(),
+  });
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setSelectedVideoFile(null);
-    setSelectedThumbnailFile(null);
-    setThumbnailPreview('');
-    setFormData({
-      title: '',
-      description: '',
-      episodeNumber: '',
-    });
-    setError('');
-  };
+  setSelectedVideoFile(null);
+  setSelectedThumbnailFile(null);
+  setThumbnailPreview('');
+  setIsAdLocked(false);   // ✅ CORRECT PLACE
+  setOpenDialog(true);
+};
+
+const handleCloseDialog = () => {
+  setOpenDialog(false);
+  setSelectedVideoFile(null);
+  setSelectedThumbnailFile(null);
+  setThumbnailPreview('');
+  setFormData({
+    title: '',
+    description: '',
+    episodeNumber: '',
+  });
+  setIsAdLocked(false);
+  setError('');
+};
+
+
 
   const handleUpload = async () => {
     if (!selectedVideoFile) {
@@ -255,6 +276,11 @@ const SeasonDetailPage: React.FC = () => {
       formDataToSend.append('type', 'episode');
       formDataToSend.append('seasonId', seasonId!);
       formDataToSend.append('episodeNumber', formData.episodeNumber);
+      formDataToSend.append(
+        'adStatus',
+        isAdLocked ? 'locked' : 'unlocked'
+      );
+
 
       if (selectedThumbnailFile) {
         formDataToSend.append('thumbnail', selectedThumbnailFile);
@@ -416,7 +442,7 @@ const SeasonDetailPage: React.FC = () => {
                 <CardMedia
                   component="img"
                   height="180"
-                  image={episode.thumbnailUrl || `https://via.placeholder.com/300x180?text=Episode+${episode.episodeNumber}`}
+                  image={getEpisodeThumbnailWithCacheBust(episode.thumbnailUrl, (episode as any).updatedAt, episode.episodeNumber)}
                   alt={episode.title}
                 />
                 <IconButton
@@ -572,6 +598,17 @@ const SeasonDetailPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, episodeNumber: e.target.value })}
               required
             />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isAdLocked}
+                  onChange={(e) => setIsAdLocked(e.target.checked)}
+                  color="warning"
+                />
+              }
+              label="Require ad to watch this episode"
+            />
+
             <TextField
               fullWidth
               label="Title"

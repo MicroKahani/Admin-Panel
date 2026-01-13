@@ -58,6 +58,17 @@ interface Video {
   createdAt: string;
 }
 
+// Helper to cache-bust episode poster thumbnails
+const getThumbnailWithCacheBust = (thumbnailUrl?: string, updatedAt?: string) => {
+  if (!thumbnailUrl) return undefined;
+  try {
+    const ts = updatedAt ? new Date(updatedAt).getTime() : Date.now();
+    return `${thumbnailUrl}?v=${ts}`;
+  } catch {
+    return `${thumbnailUrl}?v=${Date.now()}`;
+  }
+};
+
 const EpisodePlayerPage: React.FC = () => {
   const { episodeId } = useParams<{ episodeId: string }>();
   const navigate = useNavigate();
@@ -290,9 +301,35 @@ const EpisodePlayerPage: React.FC = () => {
           {error}
         </Alert>
       )}
+      <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 4,
+            mb: 4,
+          }}
+        >
 
-      <Paper sx={{ mb: 3, overflow: 'hidden' }}>
-        <Box sx={{ position: 'relative', bgcolor: 'black', aspectRatio: '16/9' }}>
+
+            <Paper
+              sx={{
+                mb: 3,
+                overflow: 'hidden',
+                maxWidth: 420,
+                ml: 0,              // ✅ stick to left
+                mr: 'auto',
+                borderRadius: 3,
+                flexShrink: 0,
+              }}
+            >
+
+          <Box
+              sx={{
+                position: 'relative',
+                bgcolor: 'black',
+                aspectRatio: '9/16',   // 🔥 VERTICAL PLAYER
+              }}
+            >
           {playerLoading && (
             <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1, color: 'white' }}>
               <CircularProgress color="primary" />
@@ -302,8 +339,14 @@ const EpisodePlayerPage: React.FC = () => {
           <video
             ref={videoRef}
             src={getCurrentVideoUrl()}
-            poster={safeVideo.thumbnailUrl}
-            style={{ width: '100%', height: '100%', display: safeVariants.length === 0 ? 'none' : 'block' }}
+            poster={getThumbnailWithCacheBust(safeVideo.thumbnailUrl, (safeVideo as any).updatedAt) || safeVideo.thumbnailUrl}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',   // 🔑 fills vertical frame
+              display: safeVariants.length === 0 ? 'none' : 'block',
+            }}
+            
             controls
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
@@ -348,7 +391,7 @@ const EpisodePlayerPage: React.FC = () => {
         </Box>
       </Paper>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <Paper sx={{ p: 3, flex: 1, minWidth: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
           <Box>
             <Typography variant="h5" fontWeight="bold">
@@ -376,9 +419,8 @@ const EpisodePlayerPage: React.FC = () => {
           <Chip label={`${safeVideo.likes || 0} likes`} variant="outlined" />
           <Chip label={`Status: ${safeVideo.status}`} color="success" />
         </Box>
-      </Paper>
+        <Box sx={{ mt: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
 
-      <Paper sx={{ p: 3 }}>
         <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>Quality Options</Typography>
         <Stack spacing={1}>
           {safeVariants.length > 0 ? (
@@ -397,7 +439,15 @@ const EpisodePlayerPage: React.FC = () => {
             <Alert severity="warning">No variants. Backend mein upload karo (e.g., 480p.mp4).</Alert>
           )}
         </Stack>
+      </Box>
+
       </Paper>
+
+      
+    </Box>
+
+
+      
 
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Edit Episode</DialogTitle>

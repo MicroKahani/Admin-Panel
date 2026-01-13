@@ -25,8 +25,8 @@ import {
   Alert,
   Stack,
 } from '@mui/material';
-import { Upload, Delete, CloudUpload, Image as ImageIcon } from '@mui/icons-material';
-import { getAllVideos, uploadVideo, updateVideo, deleteVideo, getAllSeasons } from '../services/api';
+import { Upload, Delete, CloudUpload, Image as ImageIcon, Edit } from '@mui/icons-material';
+import { getAllVideos, uploadVideo, updateVideo, deleteVideo, getAllSeasons, updateVideoAdStatus } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Video {
@@ -37,9 +37,18 @@ interface Video {
   type: 'reel' | 'episode';
   status: 'uploading' | 'processing' | 'completed' | 'failed';
   isPublished: boolean;
+  adStatus: 'locked' | 'unlocked';
   duration: number;
   createdAt: string;
 }
+
+// Helper to force-refresh thumbnail images when the file changes but URL stays the same.
+// We use a local "version" number so the URL changes immediately after an update.
+const getThumbnailWithCacheBust = (thumbnailUrl?: string, version?: number) => {
+  if (!thumbnailUrl) return undefined;
+  const v = typeof version === 'number' ? version : Date.now();
+  return `${thumbnailUrl}?v=${v}`;
+};
 
 const VideoManagementPage: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -57,6 +66,12 @@ const VideoManagementPage: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [thumbnailDialogOpen, setThumbnailDialogOpen] = useState(false);
+  const [selectedVideoForThumbnail, setSelectedVideoForThumbnail] = useState<Video | null>(null);
+  const [newThumbnailFile, setNewThumbnailFile] = useState<File | null>(null);
+  const [newThumbnailPreview, setNewThumbnailPreview] = useState<string>('');
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const [thumbnailVersion, setThumbnailVersion] = useState<Record<string, number>>({});
   const { hasPermission } = useAuth();
 
   useEffect(() => {
@@ -196,6 +211,19 @@ const VideoManagementPage: React.FC = () => {
     }
   };
 
+  const handleAdStatusChange = async (
+  videoId: string,
+  adStatus: 'locked' | 'unlocked'
+) => {
+  try {
+    await updateVideoAdStatus(videoId, adStatus);
+    fetchVideos(); // refresh list
+  } catch (err: any) {
+    alert(err.response?.data?.message || 'Failed to update ad status');
+  }
+};
+
+
   const handleDelete = async (videoId: string) => {
     if (!window.confirm('Are you sure you want to delete this video?')) return;
 
@@ -213,6 +241,76 @@ const VideoManagementPage: React.FC = () => {
       case 'processing': return 'warning';
       case 'failed': return 'error';
       default: return 'default';
+    }
+  };
+
+  const handleOpenThumbnailDialog = (video: Video) => {
+    setSelectedVideoForThumbnail(video);
+    setNewThumbnailFile(null);
+    setNewThumbnailPreview('');
+    setThumbnailDialogOpen(true);
+  };
+
+  const handleCloseThumbnailDialog = () => {
+    setThumbnailDialogOpen(false);
+    setSelectedVideoForThumbnail(null);
+    setNewThumbnailFile(null);
+    setNewThumbnailPreview('');
+  };
+
+  const handleNewThumbnailSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Thumbnail size must be less than 5MB');
+        return;
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Only JPG, JPEG, and PNG files are allowed');
+        return;
+      }
+
+      setNewThumbnailFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewThumbnailPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUpdateThumbnail = async () => {
+    if (!selectedVideoForThumbnail || !newThumbnailFile) {
+      alert('Please select a thumbnail image');
+      return;
+    }
+
+    setThumbnailUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('thumbnail', newThumbnailFile);
+      
+      await updateVideo(selectedVideoForThumbnail._id, formData);
+
+      // Bump local version for this video's thumbnail so the URL changes immediately
+      setThumbnailVersion((prev) => ({
+        ...prev,
+        [selectedVideoForThumbnail._id]: (prev[selectedVideoForThumbnail._id] || 0) + 1,
+      }));
+
+      alert('Thumbnail updated successfully!');
+      handleCloseThumbnailDialog();
+      fetchVideos(); // Refresh the video list
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update thumbnail');
+    } finally {
+      setThumbnailUploading(false);
     }
   };
 
@@ -236,21 +334,81 @@ const VideoManagementPage: React.FC = () => {
       <Grid container spacing={3}>
         {videos.map((video) => (
           <Grid item xs={12} sm={6} md={4} key={video._id}>
-            <Card>
-              <CardMedia
-                component="img"
-                height="180"
-                image={video.thumbnailUrl || 'https://via.placeholder.com/300x180?text=No+Thumbnail'}
-                alt={video.title}
-              />
-              <CardContent>
-                <Typography variant="h6" noWrap>
+
+            <Card
+              sx={{
+                width: 320,          // 🔒 SAME WIDTH for all cards
+                height: 460,         // 🔒 SAME HEIGHT for all cards
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                mx: 'auto',          // center card inside grid column
+              }}
+>
+
+              <Box sx={{ position: 'relative' }}>
+                <CardMedia
+                  component="img"
+                  height="200"
+                  sx={{
+                    width: '100%',
+                    objectFit: 'cover',
+                  }}
+                  image={
+                    getThumbnailWithCacheBust(video.thumbnailUrl, thumbnailVersion[video._id]) ||
+                    'https://via.placeholder.com/300x200?text=No+Thumbnail'
+                  }
+                  alt={video.title}
+                />
+                {hasPermission('write') && (
+                  <IconButton
+                    sx={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      bgcolor: 'rgba(0, 0, 0, 0.6)',
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: 'rgba(0, 0, 0, 0.8)',
+                      },
+                    }}
+                    size="small"
+                    onClick={() => handleOpenThumbnailDialog(video)}
+                    title="Change Thumbnail"
+                  >
+                    <ImageIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+              <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                <Typography
+                    variant="h6"
+                    sx={{
+                      mb: 1,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+
                   {video.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {video.description || 'No description'}
-                </Typography>
-                <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mb: 1,
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      height: 40,          // 🔒 SAME height for all
+                    }}
+                  >
+                    {video.description || 'No description'}
+                  </Typography>
+
+                <Box sx={{ mt: 'auto', display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                   <Chip label={video.type} size="small" />
                   <Chip
                     label={video.status}
@@ -259,8 +417,34 @@ const VideoManagementPage: React.FC = () => {
                   />
                   {video.isPublished && <Chip label="Published" size="small" color="success" />}
                 </Box>
+                {hasPermission('write') && (
+  <FormControl size="small" fullWidth sx={{ mt: 1 }}>
+    <InputLabel>Ad Status</InputLabel>
+    <Select
+      value={video.adStatus}
+      label="Ad Status"
+      onChange={(e) =>
+        handleAdStatusChange(
+          video._id,
+          e.target.value as 'locked' | 'unlocked'
+        )
+      }
+    >
+      <MenuItem value="unlocked">Unlocked (No Ad)</MenuItem>
+      <MenuItem value="locked">Locked (Show Ad)</MenuItem>
+    </Select>
+  </FormControl>
+)}
+
               </CardContent>
-              <CardActions sx={{ justifyContent: 'space-between' }}>
+              <CardActions
+                  sx={{
+                    mt: 'auto',
+                    minHeight: 52,       // 🔒 uniform footer
+                    justifyContent: 'space-between',
+                  }}
+>
+
                 <Box>
                   {hasPermission('write') && video.status === 'completed' && (
                     <Button
@@ -425,6 +609,90 @@ const VideoManagementPage: React.FC = () => {
           <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button onClick={handleUpload} variant="contained" disabled={loading}>
             {loading ? 'Uploading...' : 'Upload'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Thumbnail Change Dialog */}
+      <Dialog open={thumbnailDialogOpen} onClose={handleCloseThumbnailDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Change Thumbnail</DialogTitle>
+        <DialogContent>
+          {selectedVideoForThumbnail && (
+            <Stack spacing={2} sx={{ mt: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Video: {selectedVideoForThumbnail.title}
+              </Typography>
+              
+              {/* Current Thumbnail */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Current Thumbnail</Typography>
+                <Box
+                  component="img"
+                  src={
+                    selectedVideoForThumbnail.thumbnailUrl ||
+                    'https://via.placeholder.com/300x200?text=No+Thumbnail'
+                  }
+                  alt="Current thumbnail"
+                  sx={{
+                    width: '100%',
+                    maxHeight: '200px',
+                    objectFit: 'contain',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                  }}
+                />
+              </Box>
+
+              {/* New Thumbnail Upload */}
+              <Box>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  fullWidth
+                  sx={{ py: 2 }}
+                  color={newThumbnailFile ? 'success' : 'primary'}
+                  startIcon={<ImageIcon />}
+                >
+                  {newThumbnailFile ? 'Thumbnail Selected' : 'Select New Thumbnail'}
+                  <input 
+                    type="file" 
+                    hidden 
+                    accept="image/jpeg,image/jpg,image/png" 
+                    onChange={handleNewThumbnailSelect} 
+                  />
+                </Button>
+                
+                {newThumbnailPreview && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>New Thumbnail Preview</Typography>
+                    <Box
+                      component="img"
+                      src={newThumbnailPreview}
+                      alt="New thumbnail preview"
+                      sx={{
+                        width: '100%',
+                        maxHeight: '200px',
+                        objectFit: 'contain',
+                        border: '1px solid',
+                        borderColor: 'primary.main',
+                        borderRadius: 1,
+                      }}
+                    />
+                  </Box>
+                )}
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseThumbnailDialog}>Cancel</Button>
+          <Button 
+            onClick={handleUpdateThumbnail} 
+            variant="contained" 
+            disabled={thumbnailUploading || !newThumbnailFile}
+          >
+            {thumbnailUploading ? 'Uploading...' : 'Update Thumbnail'}
           </Button>
         </DialogActions>
       </Dialog>
