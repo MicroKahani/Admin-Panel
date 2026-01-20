@@ -15,7 +15,7 @@ import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import RoleManagementPage from './pages/RoleManagementPage';
-import VideoManagementPage from './pages/VideoManagementPage';
+// import VideoManagementPage from './pages/VideoManagementPage';
 import VideoAnalyticsPage from './pages/VideoAnalyticsPage';
 import CashfreeAnalyticsPage from './pages/CashfreeAnalyticsPage';
 import UserManagementPage from './pages/UserManagementPage';
@@ -136,7 +136,7 @@ const theme = createTheme({
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Video Management', icon: <DashboardIcon />, path: '/video-management' },
+  // { text: 'Video Management', icon: <DashboardIcon />, path: '/video-management' },
   { text: 'Role Management', icon: <QuizIcon />, path: '/role-management' },
   { text: 'Web Series', icon: <DashboardIcon />, path: '/webseries' },
   { text: 'Carousel Management', icon: <ViewCarouselIcon />, path: '/carousel-management' },
@@ -337,7 +337,7 @@ const MainLayout: React.FC = () => {
           <Routes>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/role-management" element={<RoleManagementPage />} />
-            <Route path="/video-management" element={<VideoManagementPage />} />
+            {/* <Route path="/video-management" element={<VideoManagementPage />} /> */}
             <Route path="/video-analytics" element={<VideoAnalyticsPage />} />
             <Route path="/cashfree-analytics" element={<CashfreeAnalyticsPage />} />
             <Route path="/user-management" element={<UserManagementPage />} />
