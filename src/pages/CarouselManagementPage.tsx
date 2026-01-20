@@ -379,9 +379,14 @@ const CarouselManagementPage: React.FC = () => {
                         height: 220,                    // 🔒 match card height
                         objectFit: 'cover',
                         flexShrink: 0,
+                        bgcolor: 'grey.200',           // Background color when no image
                       }}
-                      image={carousel.imageUrl}
+                      image={carousel.imageUrl || 'https://via.placeholder.com/220x220?text=No+Image'}
                       alt={carousel.title}
+                      onError={(e: any) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://via.placeholder.com/220x220?text=Image+Error';
+                      }}
                     />
 
                     <Box
