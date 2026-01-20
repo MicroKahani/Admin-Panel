@@ -22,11 +22,10 @@ import {
   InputLabel,
   Chip,
   IconButton,
-  Alert,
   Stack,
 } from '@mui/material';
-import { Upload, Delete, CloudUpload, Image as ImageIcon, Edit } from '@mui/icons-material';
-import { getAllVideos, uploadVideo, updateVideo, deleteVideo, getAllSeasons, updateVideoAdStatus } from '../services/api';
+import { Delete, CloudUpload, Image as ImageIcon } from '@mui/icons-material';
+import { getAllVideos, updateVideo, deleteVideo, getAllSeasons, updateVideoAdStatus } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Video {
@@ -53,19 +52,7 @@ const getThumbnailWithCacheBust = (thumbnailUrl?: string, version?: number) => {
 const VideoManagementPage: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
-  const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
-  const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    type: 'reel' as 'reel' | 'episode',
-    seasonId: '',
-    episodeNumber: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  // Upload and Reels filtering removed
   const [thumbnailDialogOpen, setThumbnailDialogOpen] = useState(false);
   const [selectedVideoForThumbnail, setSelectedVideoForThumbnail] = useState<Video | null>(null);
   const [newThumbnailFile, setNewThumbnailFile] = useState<File | null>(null);
@@ -73,134 +60,81 @@ const VideoManagementPage: React.FC = () => {
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailVersion, setThumbnailVersion] = useState<Record<string, number>>({});
   const { hasPermission } = useAuth();
+  
+  // Filtering states
+  // Filtering states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterPublish, setFilterPublish] = useState<string>('all');
+  const [filterSeason, setFilterSeason] = useState<string>('all');
 
   useEffect(() => {
     fetchVideos();
     fetchSeasons();
   }, []);
 
+  // Filtered videos logic
+  const filteredVideos = videos.filter((video) => {
+    // Search term filter
+    const searchMatch = 
+      video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (video.description && video.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Status filter
+    const statusMatch = filterStatus === 'all' || video.status === filterStatus;
+    
+    // Publish filter
+    const publishMatch = filterPublish === 'all' || 
+      (filterPublish === 'published' ? video.isPublished : !video.isPublished);
+      
+    // Season filter (for episodes)
+    const seasonMatch = filterSeason === 'all' || 
+      (video.type === 'episode' && (video as any).seasonId?._id === filterSeason) || 
+      (video.type === 'episode' && (video as any).seasonId === filterSeason);
+
+    return searchMatch && statusMatch && publishMatch && seasonMatch;
+  });
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilterStatus('all');
+    setFilterPublish('all');
+    setFilterSeason('all');
+  };
+
   const fetchVideos = async () => {
     try {
-      const response = await getAllVideos();
-      setVideos(response.data);
+      const response: any = await getAllVideos();
+      const videosData = response.data?.data || response.data || [];
+      if (Array.isArray(videosData)) {
+        setVideos(videosData);
+      } else {
+        console.error('Videos data is not an array:', videosData);
+        setVideos([]);
+      }
     } catch (err) {
       console.error('Failed to fetch videos:', err);
+      setVideos([]);
     }
   };
 
   const fetchSeasons = async () => {
     try {
-      const response = await getAllSeasons();
-      setSeasons(response.data);
+      const response: any = await getAllSeasons();
+      const seasonsData = response.data?.data || response.data || [];
+      if (Array.isArray(seasonsData)) {
+        setSeasons(seasonsData);
+      } else {
+        console.error('Seasons data is not an array:', seasonsData);
+        setSeasons([]);
+      }
     } catch (err) {
       console.error('Failed to fetch seasons:', err);
+      setSeasons([]);
     }
   };
 
-  const handleVideoFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file size (max 500MB)
-      if (file.size > 500 * 1024 * 1024) {
-        alert('File size must be less than 500MB');
-        return;
-      }
 
-      // Validate file type
-      const allowedTypes = ['video/mp4', 'video/quicktime'];
-      if (!allowedTypes.includes(file.type)) {
-        alert('Only MP4 and MOV files are allowed');
-        return;
-      }
-
-      setSelectedVideoFile(file);
-    }
-  };
-
-  const handleThumbnailFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Thumbnail size must be less than 5MB');
-        return;
-      }
-
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-      if (!allowedTypes.includes(file.type)) {
-        alert('Only JPG, JPEG, and PNG files are allowed');
-        return;
-      }
-
-      setSelectedThumbnailFile(file);
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setThumbnailPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedVideoFile) {
-      setError('Please select a video file');
-      return;
-    }
-
-    if (!formData.title.trim()) {
-      setError('Please enter a title');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('video', selectedVideoFile);
-      formDataToSend.append('title', formData.title);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('type', formData.type);
-      
-      // Add thumbnail if selected
-      if (selectedThumbnailFile) {
-        formDataToSend.append('thumbnail', selectedThumbnailFile);
-      }
-      
-      if (formData.type === 'episode') {
-        formDataToSend.append('seasonId', formData.seasonId);
-        formDataToSend.append('episodeNumber', formData.episodeNumber);
-      }
-
-      await uploadVideo(formDataToSend);
-      
-      alert('Video upload started! Processing will take some time.');
-      handleCloseDialog();
-      fetchVideos();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Upload failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setSelectedVideoFile(null);
-    setSelectedThumbnailFile(null);
-    setThumbnailPreview('');
-    setFormData({
-      title: '',
-      description: '',
-      type: 'reel',
-      seasonId: '',
-      episodeNumber: '',
-    });
-    setError('');
-  };
 
   const handleTogglePublish = async (videoId: string, currentStatus: boolean) => {
     try {
@@ -320,20 +254,86 @@ const VideoManagementPage: React.FC = () => {
         <Typography variant="h4" fontWeight="bold">
           Video Management
         </Typography>
-        {hasPermission('write') && (
-          <Button
-            variant="contained"
-            startIcon={<Upload />}
-            onClick={() => setOpenDialog(true)}
-          >
-            Upload Video
-          </Button>
-        )}
+
       </Box>
 
+      {/* Filters Section */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+      <Grid container spacing={2} alignItems="center">
+        <Grid size={{ xs: 12, sm: 4, md: 3 }}>
+          <TextField
+            fullWidth
+            size="small"
+            label="Search Videos"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Title or description..."
+          />
+        </Grid>
+
+        <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+          <FormControl fullWidth size="small">
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={filterStatus}
+              label="Status"
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <MenuItem value="all">All Status</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="processing">Processing</MenuItem>
+              <MenuItem value="uploading">Uploading</MenuItem>
+              <MenuItem value="failed">Failed</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+          <FormControl fullWidth size="small">
+            <InputLabel>Publish State</InputLabel>
+            <Select
+              value={filterPublish}
+              label="Publish State"
+              onChange={(e) => setFilterPublish(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="published">Published</MenuItem>
+              <MenuItem value="unpublished">Unpublished</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+          <FormControl fullWidth size="small">
+            <InputLabel>Season</InputLabel>
+            <Select
+              value={filterSeason}
+              label="Season"
+              onChange={(e) => setFilterSeason(e.target.value)}
+            >
+              <MenuItem value="all">All Seasons</MenuItem>
+              {seasons.map((season) => (
+                <MenuItem key={season._id} value={season._id}>
+                  {season.title}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid size={{ xs: 6, sm: 4, md: 1 }}>
+          <Button 
+            fullWidth 
+            variant="outlined" 
+            onClick={clearFilters}
+            size="medium"
+          >
+            Clear
+          </Button>
+        </Grid>
+      </Grid>
+      </Paper>
+
       <Grid container spacing={3}>
-        {videos.map((video) => (
-          <Grid item xs={12} sm={6} md={4} key={video._id}>
+        {filteredVideos.map((video) => (
+          <Grid key={video._id} size={{ xs: 12, sm: 6, md: 4 }}>
 
             <Card
               sx={{
@@ -409,7 +409,7 @@ const VideoManagementPage: React.FC = () => {
                   </Typography>
 
                 <Box sx={{ mt: 'auto', display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                  <Chip label={video.type} size="small" />
+
                   <Chip
                     label={video.status}
                     size="small"
@@ -472,7 +472,7 @@ const VideoManagementPage: React.FC = () => {
         ))}
       </Grid>
 
-      {videos.length === 0 && (
+      {filteredVideos.length === 0 && (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <CloudUpload sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h6" color="text.secondary">
@@ -481,137 +481,7 @@ const VideoManagementPage: React.FC = () => {
         </Paper>
       )}
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Upload Video</DialogTitle>
-        <DialogContent>
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-          <Stack spacing={2} sx={{ mt: 2 }}>
-            {/* Video Upload */}
-            <Button
-              variant="outlined"
-              component="label"
-              fullWidth
-              sx={{ py: 2 }}
-            >
-              <Upload sx={{ mr: 1 }} />
-              {selectedVideoFile ? selectedVideoFile.name : 'Select Video (MP4/MOV, max 500MB)'}
-              <input 
-                type="file" 
-                hidden 
-                accept="video/mp4,video/quicktime" 
-                onChange={handleVideoFileSelect} 
-              />
-            </Button>
-
-            {/* Thumbnail Upload */}
-            <Box>
-              <Button
-                variant="outlined"
-                component="label"
-                fullWidth
-                sx={{ py: 2 }}
-                color={selectedThumbnailFile ? 'success' : 'primary'}
-              >
-                <ImageIcon sx={{ mr: 1 }} />
-                {selectedThumbnailFile ? 'Thumbnail Selected' : 'Upload Custom Thumbnail (Optional)'}
-                <input 
-                  type="file" 
-                  hidden 
-                  accept="image/jpeg,image/jpg,image/png" 
-                  onChange={handleThumbnailFileSelect} 
-                />
-              </Button>
-              
-              {thumbnailPreview && (
-                <Box sx={{ mt: 2, textAlign: 'center' }}>
-                  <img 
-                    src={thumbnailPreview} 
-                    alt="Thumbnail preview" 
-                    style={{ 
-                      maxWidth: '100%', 
-                      maxHeight: '200px',
-                      borderRadius: '8px',
-                      border: '1px solid #ddd'
-                    }} 
-                  />
-                  <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                    Preview
-                  </Typography>
-                </Box>
-              )}
-              
-              {!selectedThumbnailFile && (
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                  If no thumbnail is provided, one will be auto-generated from the video
-                </Typography>
-              )}
-            </Box>
-
-            <TextField
-              fullWidth
-              label="Title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-            />
-
-            <TextField
-              fullWidth
-              label="Description"
-              multiline
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-
-            <FormControl fullWidth>
-              <InputLabel>Type</InputLabel>
-              <Select
-                value={formData.type}
-                label="Type"
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-              >
-                <MenuItem value="reel">Reel</MenuItem>
-                <MenuItem value="episode">Episode</MenuItem>
-              </Select>
-            </FormControl>
-
-            {formData.type === 'episode' && (
-              <>
-                <FormControl fullWidth>
-                  <InputLabel>Season</InputLabel>
-                  <Select
-                    value={formData.seasonId}
-                    label="Season"
-                    onChange={(e) => setFormData({ ...formData, seasonId: e.target.value })}
-                  >
-                    {seasons.map((season) => (
-                      <MenuItem key={season._id} value={season._id}>
-                        {season.title}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <TextField
-                  fullWidth
-                  label="Episode Number"
-                  type="number"
-                  value={formData.episodeNumber}
-                  onChange={(e) => setFormData({ ...formData, episodeNumber: e.target.value })}
-                />
-              </>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleUpload} variant="contained" disabled={loading}>
-            {loading ? 'Uploading...' : 'Upload'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Thumbnail Change Dialog */}
       <Dialog open={thumbnailDialogOpen} onClose={handleCloseThumbnailDialog} maxWidth="sm" fullWidth>

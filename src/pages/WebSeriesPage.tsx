@@ -20,6 +20,10 @@ import {
   Alert,
   Stack,
   Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
 } from '@mui/material';
 import { Add, Edit, Delete, Visibility } from '@mui/icons-material';
 import { getAllSeasons, createSeason, updateSeason, deleteSeason } from '../services/api';
@@ -53,15 +57,38 @@ const WebSeriesPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
 
+  // Filtering states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
   useEffect(() => {
     fetchSeasons();
   }, []);
+
+  // Filtered seasons logic
+  const filteredSeasons = seasons.filter((season) => {
+    // Search term filter
+    const searchMatch = 
+      season.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (season.description && season.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Status filter
+    const statusMatch = filterStatus === 'all' || 
+      (filterStatus === 'active' ? season.isActive : !season.isActive);
+
+    return searchMatch && statusMatch;
+  });
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilterStatus('all');
+  };
 
   const fetchSeasons = async () => {
     setFetchLoading(true);
     try {
       console.log('Fetching seasons...');
-      const response = await getAllSeasons();
+      const response: any = await getAllSeasons();
       console.log('Seasons response:', response);
       
       // Check if response has data
@@ -231,6 +258,46 @@ const WebSeriesPage: React.FC = () => {
         </Alert>
       )}
 
+      {/* Filters Section */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Search Web Series"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Title or description..."
+            />
+          </Grid>
+          <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={filterStatus}
+                label="Status"
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <MenuItem value="all">All Status</MenuItem>
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="inactive">Inactive</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 2, md: 2 }}>
+            <Button 
+              fullWidth 
+              variant="outlined" 
+              onClick={clearFilters}
+              size="medium"
+            >
+              Clear
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
+
       {/* Show loading state */}
       {fetchLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -241,8 +308,8 @@ const WebSeriesPage: React.FC = () => {
       ) : (
         <>
           <Grid container spacing={3}>
-            {seasons.map((season) => (
-          <Grid item xs={12} sm={6} md={4} key={season._id}>
+            {filteredSeasons.map((season) => (
+          <Grid key={season._id} size={{ xs: 12, sm: 6, md: 4 }}>
             <Card
                 sx={{
                   width: 320,          // 🔒 SAME WIDTH (same as video page)
@@ -361,7 +428,7 @@ const WebSeriesPage: React.FC = () => {
           ))}
         </Grid>
 
-        {seasons.length === 0 && !fetchLoading && (
+        {filteredSeasons.length === 0 && !fetchLoading && (
           <Paper sx={{ p: 4, textAlign: 'center' }}>
             <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
               No web series created yet

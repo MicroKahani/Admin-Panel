@@ -25,11 +25,13 @@ import {
   Link,
   Switch,
   FormControlLabel,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import {
-  ArrowBack,
   Upload,
-  Edit,
   Delete,
   PlayArrow,
   CloudUpload,
@@ -40,7 +42,8 @@ import {
   getEpisodesBySeason,
   uploadVideo,
   updateVideo,
-  deleteVideo
+  deleteVideo,
+  updateVideoAdStatus
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import CastCrewManager from '../components/CastCrewManager';
@@ -55,6 +58,7 @@ interface Episode {
   status: 'uploading' | 'processing' | 'completed' | 'failed';
   isPublished: boolean;
   views: number;
+  adStatus: 'locked' | 'unlocked';
   createdAt: string;
 }
 
@@ -108,6 +112,41 @@ const SeasonDetailPage: React.FC = () => {
   const [castMembers, setCastMembers] = useState<CastMember[]>([]);
   const { hasPermission } = useAuth();
 
+  // Search and Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Filtered Episodes Logic
+  const filteredEpisodes = episodes.filter((episode) => {
+    // Search filter
+    const searchMatch = 
+      episode.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (episode.description && episode.description.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    // Status filter
+    const statusMatch = filterStatus === 'all' || 
+      (filterStatus === 'published' ? episode.isPublished : 
+       filterStatus === 'unpublished' ? !episode.isPublished : true);
+
+    return searchMatch && statusMatch;
+  });
+
+  const handleAdStatusChange = async (
+    episodeId: string,
+    adStatus: 'locked' | 'unlocked'
+  ) => {
+    try {
+      await updateVideoAdStatus(episodeId, adStatus);
+      // Optimistically update local state or refetch
+      setEpisodes(prev => prev.map(ep => 
+        ep._id === episodeId ? { ...ep, adStatus } : ep
+      ));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update ad status');
+      fetchEpisodes(); // Revert on failure
+    }
+  };
+
   useEffect(() => {
     if (seasonId) {
       fetchSeasonDetails();
@@ -124,9 +163,9 @@ const SeasonDetailPage: React.FC = () => {
       const response = await getSeasonById(seasonId!);
       console.log('Season response:', response);
 
-      if (response && response.data) {
-        console.log('Response data:', response.data);
-        const seasonData = response.data.data || response.data;
+      if (response && (response as any).data) {
+        console.log('Response data:', (response as any).data);
+        const seasonData = (response as any).data.data || (response as any).data;
         console.log('Season data:', seasonData);
         if (seasonData && typeof seasonData === 'object') {
           setSeason(seasonData);
@@ -156,9 +195,9 @@ const SeasonDetailPage: React.FC = () => {
       const response = await getEpisodesBySeason(seasonId!);
       console.log('Episodes response:', response);
 
-      if (response && response.data) {
-        console.log('Response data:', response.data);
-        const episodesData = response.data.data || response.data;
+      if (response && (response as any).data) {
+        console.log('Response data:', (response as any).data);
+        const episodesData = (response as any).data.data || (response as any).data;
         console.log('Episodes data:', episodesData);
 
         if (Array.isArray(episodesData)) {
@@ -433,10 +472,40 @@ const handleCloseDialog = () => {
         />
       </Paper>
 
+      {/* Filters Section */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, sm: 6, md: 8 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Search Episodes"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by title or description..."
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={filterStatus}
+                label="Status"
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="published">Published</MenuItem>
+                <MenuItem value="unpublished">Unpublished</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Paper>
+
       {/* Episodes Grid */}
       <Grid container spacing={3}>
-        {episodes.map((episode) => (
-          <Grid item xs={12} sm={6} md={4} key={episode._id}>
+        {filteredEpisodes.map((episode) => (
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={episode._id}>
             <Card>
               <Box sx={{ position: 'relative' }}>
                 <CardMedia
@@ -495,6 +564,25 @@ const handleCloseDialog = () => {
                     variant="outlined"
                   />
                 </Box>
+                
+                {hasPermission('write') && (
+                  <FormControl size="small" fullWidth sx={{ mt: 2 }}>
+                    <InputLabel>Ad Status</InputLabel>
+                    <Select
+                      value={episode.adStatus || 'unlocked'}
+                      label="Ad Status"
+                      onChange={(e) =>
+                        handleAdStatusChange(
+                          episode._id,
+                          e.target.value as 'locked' | 'unlocked'
+                        )
+                      }
+                    >
+                      <MenuItem value="unlocked">Unlocked (No Ad)</MenuItem>
+                      <MenuItem value="locked">Locked (Show Ad)</MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
               </CardContent>
               <CardActions sx={{ justifyContent: 'space-between' }}>
                 <Box>
@@ -524,7 +612,7 @@ const handleCloseDialog = () => {
         ))}
       </Grid>
 
-      {episodes.length === 0 && (
+      {filteredEpisodes.length === 0 && (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <CloudUpload sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h6" color="text.secondary">

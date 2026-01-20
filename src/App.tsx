@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
-import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItem, ListItemIcon, ListItemText, Button, ListItemButton } from '@mui/material';
+import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItem, ListItemIcon, ListItemText, Button, ListItemButton, IconButton, useTheme, useMediaQuery } from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import QuizIcon from '@mui/icons-material/Quiz';
@@ -147,8 +148,15 @@ const menuItems = [
   { text: 'User Management', icon: <PeopleIcon />, path: '/user-management' },
 ];
 const MainLayout: React.FC = () => {
-  const { isAuthenticated, isLoading, logout, admin } = useAuth(); // Changed user to admin
+  const { isAuthenticated, isLoading, logout, admin } = useAuth();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -169,101 +177,163 @@ const MainLayout: React.FC = () => {
     );
   }
 
-  // If authenticated, show main layout
+  const drawerContent = (
+    <>
+      <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 2 }}>
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 700,
+            background: 'linear-gradient(135deg, #1f2937 0%, #3b82f6 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}
+        >
+          DesiDrama
+        </Typography>
+      </Toolbar>
+      <Box sx={{ overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <List sx={{ flex: 1 }}>
+          {menuItems.map((item) => (
+            <ListItem disablePadding key={item.text} sx={{ mb: 0.5, px: 1 }}>
+              <ListItemButton 
+                component={Link} 
+                to={item.path} 
+                selected={location.pathname === item.path}
+                onClick={() => isMobile && setMobileOpen(false)}
+                sx={{
+                  borderRadius: 1,
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: 'inherit' }}>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.text}
+                  primaryTypographyProps={{
+                    sx: { fontSize: '0.9rem', fontWeight: 500 }
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Box>
+    </>
+  );
+
   return (
     <Box sx={{ display: 'flex' }}>
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { 
-            width: drawerWidth, 
-            boxSizing: 'border-box',
-            background: 'linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)',
-            borderRight: '1px solid #e5e7eb',
-          },
+      <AppBar 
+        position="fixed" 
+        sx={{ 
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          ml: { md: `${drawerWidth}px` },
         }}
       >
-        <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 2 }}>
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #1f2937 0%, #3b82f6 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            DesiDrama
-          </Typography>
-        </Toolbar>
-        <Box sx={{ overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <List sx={{ flex: 1 }}>
-            {menuItems.map((item) => (
-              <ListItem disablePadding key={item.text} sx={{ mb: 0.5, px: 1 }}>
-                <ListItemButton 
-                  component={Link} 
-                  to={item.path} 
-                  selected={location.pathname === item.path}
-                  sx={{
-                    borderRadius: 1,
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40, color: 'inherit' }}>
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary={item.text}
-                    primaryTypographyProps={{
-                      sx: { fontSize: '0.9rem', fontWeight: 500 }
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default', minHeight: '100vh' }}>
-        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-          <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2, display: { md: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
             <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 600 }}>
               Admin Panel
             </Typography>
-            {admin && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {admin.email}
-                  </Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    {admin.role || 'Admin'}
-                  </Typography>
-                </Box>
-                <Button 
-                  color="inherit" 
-                  onClick={logout} 
-                  sx={{ 
-                    textTransform: 'none',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    }
-                  }}
-                >
-                  Logout
-                </Button>
+          </Box>
+          
+          {admin && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {admin.email}
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                  {admin.role || 'Admin'}
+                </Typography>
               </Box>
-            )}
-          </Toolbar>
-        </AppBar>
+              <Button 
+                color="inherit" 
+                onClick={logout} 
+                sx={{ 
+                  textTransform: 'none',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  }
+                }}
+              >
+                Logout
+              </Button>
+            </Box>
+          )}
+        </Toolbar>
+      </AppBar>
+      
+      <Box
+        component="nav"
+        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
+      >
+        {/* Mobile Drawer */}
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile.
+          }}
+          sx={{
+            display: { xs: 'block', md: 'none' },
+            '& .MuiDrawer-paper': { 
+              width: drawerWidth, 
+              boxSizing: 'border-box',
+              background: 'linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)',
+              borderRight: '1px solid #e5e7eb',
+            },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+        
+        {/* Desktop Drawer */}
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            '& .MuiDrawer-paper': { 
+              width: drawerWidth, 
+              boxSizing: 'border-box',
+              background: 'linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)',
+              borderRight: '1px solid #e5e7eb',
+            },
+          }}
+          open
+        >
+          {drawerContent}
+        </Drawer>
+      </Box>
+
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          bgcolor: 'background.default', 
+          minHeight: '100vh',
+          width: { md: `calc(100% - ${drawerWidth}px)` } 
+        }}
+      >
         <Toolbar />
-        <Box sx={{ p: 4 }}>
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           <Routes>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/role-management" element={<RoleManagementPage />} />
