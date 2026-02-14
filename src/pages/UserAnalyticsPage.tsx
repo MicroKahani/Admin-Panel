@@ -333,7 +333,7 @@ const UserAnalyticsPage: React.FC = () => {
         <LinearProgress sx={{ mb: 4 }} />
       ) : (
         <Grid container spacing={2} mb={4}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" fontWeight={600} mb={1}>Total Users</Typography>
               <Typography variant="h3" color="primary.main" fontWeight={800}>
@@ -341,7 +341,7 @@ const UserAnalyticsPage: React.FC = () => {
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" fontWeight={600} mb={1}>Verified</Typography>
               <Typography variant="h3" color="success.main" fontWeight={800}>
@@ -349,7 +349,7 @@ const UserAnalyticsPage: React.FC = () => {
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" fontWeight={600} mb={1}>Active</Typography>
               <Typography variant="h3" color="primary.main" fontWeight={800}>
@@ -357,7 +357,7 @@ const UserAnalyticsPage: React.FC = () => {
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" fontWeight={600} mb={1}>New (30d)</Typography>
               <Typography variant="h3" color="secondary.main" fontWeight={800}>
@@ -868,17 +868,17 @@ const UserAnalyticsPage: React.FC = () => {
           ) : detailDialog.user ? (
             <Box>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} sm={6}>
                   <Typography variant="subtitle2" color="text.secondary">Email</Typography>
                   <Typography variant="body1" mb={2}>{detailDialog.user.email}</Typography>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} sm={6}>
                   <Typography variant="subtitle2" color="text.secondary">Role</Typography>
                   <Box mb={2}>
                     <Chip label={detailDialog.user.role} color={getRoleChipColor(detailDialog.user.role)} />
                   </Box>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} sm={6}>
                   <Typography variant="subtitle2" color="text.secondary">Status</Typography>
                   <Box display="flex" gap={1} mb={2}>
                     <Chip 
@@ -893,19 +893,19 @@ const UserAnalyticsPage: React.FC = () => {
                     />
                   </Box>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} sm={6}>
                   <Typography variant="subtitle2" color="text.secondary">Location</Typography>
                   <Typography variant="body1" mb={2}>
                     {detailDialog.user.country}{detailDialog.user.state ? `, ${detailDialog.user.state}` : ''}
                   </Typography>
                 </Grid>
                 {detailDialog.user.bio && (
-                  <Grid item xs={12}>
+                  <Grid xs={12}>
                     <Typography variant="subtitle2" color="text.secondary">Bio</Typography>
                     <Typography variant="body1" mb={2}>{detailDialog.user.bio}</Typography>
                   </Grid>
                 )}
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <Typography variant="subtitle2" color="text.secondary">Account Info</Typography>
                   <Typography variant="body2">
                     Joined: {detailDialog.user.createdAtFormatted}<br/>

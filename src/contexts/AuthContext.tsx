@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getCurrentAdmin, logout as logoutAPI } from '../services/api';
+import logger from '../utils/logger';
 
 interface Admin {
   id: string;
@@ -31,30 +32,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check if user is authenticated by calling /me endpoint
     // If cookie exists, backend will verify it
-    console.log('AuthContext: Checking authentication...');
+    logger.info('AuthContext', 'Checking authentication...');
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
     try {
-      console.log('AuthContext: Fetching current admin...');
-      const response = await getCurrentAdmin();
-      console.log('AuthContext: Response:', response);
-      
+      logger.debug('AuthContext', 'Fetching current admin...');
+      const response: any = await getCurrentAdmin();
+
       // response is already res.data from API service
       if (response.success) {
-        console.log('AuthContext: Admin authenticated:', response.data);
+        logger.info('AuthContext', 'Admin authenticated', { email: response.data.email });
         setAdmin(response.data);
       } else {
-        console.log('AuthContext: Response success=false');
+        logger.warn('AuthContext', 'Authentication check failed - success=false');
         setAdmin(null);
       }
     } catch (error: any) {
       // Don't log out on 401 during initial load - just set admin to null
-      console.log('AuthContext: Error fetching admin:', error.message);
+      logger.debug('AuthContext', 'Error fetching admin', { message: error.message });
       setAdmin(null);
     } finally {
-      console.log('AuthContext: Setting loading to false');
+      logger.debug('AuthContext', 'Setting loading to false');
       setLoading(false);
     }
   };
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await logoutAPI();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('AuthContext', 'Logout error', error);
     } finally {
       setAdmin(null);
       window.location.href = '/login';

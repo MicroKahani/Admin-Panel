@@ -53,9 +53,9 @@ interface User {
   name?: string;
   username?: string;
   email?: string;
-  coinsBalance: number;
-  totalVideosWatched: number;
-  streak: number;
+  coinsBalance?: number;
+  totalVideosWatched?: number;
+  streak?: number;
   isActive: boolean;
   isBlocked: boolean;
   commentBanned: boolean;
@@ -157,7 +157,8 @@ const UserManagementPage: React.FC = () => {
     });
   };
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: number | undefined) => {
+    if (num === undefined || num === null) return '0';
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
     return num.toString();
@@ -172,7 +173,7 @@ const UserManagementPage: React.FC = () => {
       {/* Stats Cards */}
       {stats && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
@@ -182,7 +183,7 @@ const UserManagementPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
@@ -194,7 +195,7 @@ const UserManagementPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid xs={12} sm={3}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
@@ -206,7 +207,7 @@ const UserManagementPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid xs={12} sm={3}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
@@ -224,7 +225,7 @@ const UserManagementPage: React.FC = () => {
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <TextField
               fullWidth
               label="Search Users"
@@ -239,7 +240,7 @@ const UserManagementPage: React.FC = () => {
               }}
             />
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid xs={12} sm={3}>
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
               <Select
@@ -257,7 +258,7 @@ const UserManagementPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={2}>
+          <Grid xs={12} sm={2}>
             <Button
               variant="outlined"
               onClick={() => {
@@ -270,7 +271,7 @@ const UserManagementPage: React.FC = () => {
               Clear
             </Button>
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid xs={12} sm={3}>
             <Button
               variant="contained"
               onClick={fetchUsers}
@@ -359,9 +360,9 @@ const UserManagementPage: React.FC = () => {
                       </TableCell>
                       <TableCell align="right">
                         <Chip
-                          label={user.streak}
+                          label={user.streak ?? 0}
                           size="small"
-                          color={user.streak > 0 ? 'primary' : 'default'}
+                          color={(user.streak ?? 0) > 0 ? 'primary' : 'default'}
                         />
                       </TableCell>
                       <TableCell>

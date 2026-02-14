@@ -207,7 +207,7 @@ const VideoAnalyticsPage: React.FC = () => {
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <FormControl fullWidth>
               <InputLabel>Filter By</InputLabel>
               <Select
@@ -224,7 +224,7 @@ const VideoAnalyticsPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <FormControl fullWidth>
               <InputLabel>Sort Order</InputLabel>
               <Select
@@ -237,7 +237,7 @@ const VideoAnalyticsPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <FormControl fullWidth>
               <InputLabel>Video Type</InputLabel>
               <Select
@@ -257,7 +257,7 @@ const VideoAnalyticsPage: React.FC = () => {
       {/* Summary Cards */}
       {summary && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
@@ -267,7 +267,7 @@ const VideoAnalyticsPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
@@ -277,7 +277,7 @@ const VideoAnalyticsPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
@@ -287,7 +287,7 @@ const VideoAnalyticsPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
@@ -476,7 +476,7 @@ const VideoAnalyticsPage: React.FC = () => {
             <Box>
               {/* Metrics Cards */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid xs={12} sm={6} md={3}>
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
@@ -486,7 +486,7 @@ const VideoAnalyticsPage: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid xs={12} sm={6} md={3}>
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
@@ -496,7 +496,7 @@ const VideoAnalyticsPage: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid xs={12} sm={6} md={3}>
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
@@ -506,7 +506,7 @@ const VideoAnalyticsPage: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid xs={12} sm={6} md={3}>
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
@@ -520,7 +520,7 @@ const VideoAnalyticsPage: React.FC = () => {
 
               {/* Rates */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid xs={12} sm={6} md={3}>
                   <Paper sx={{ p: 2 }}>
                     <Typography color="textSecondary" gutterBottom>
                       Engagement Rate
@@ -528,7 +528,7 @@ const VideoAnalyticsPage: React.FC = () => {
                     <Typography variant="h6">{detailedAnalytics.rates.engagementRate}%</Typography>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid xs={12} sm={6} md={3}>
                   <Paper sx={{ p: 2 }}>
                     <Typography color="textSecondary" gutterBottom>
                       Unlock Rate
@@ -536,7 +536,7 @@ const VideoAnalyticsPage: React.FC = () => {
                     <Typography variant="h6">{detailedAnalytics.rates.unlockRate}%</Typography>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid xs={12} sm={6} md={3}>
                   <Paper sx={{ p: 2 }}>
                     <Typography color="textSecondary" gutterBottom>
                       Coin Unlock Rate
@@ -544,7 +544,7 @@ const VideoAnalyticsPage: React.FC = () => {
                     <Typography variant="h6">{detailedAnalytics.rates.coinUnlockRate}%</Typography>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid xs={12} sm={6} md={3}>
                   <Paper sx={{ p: 2 }}>
                     <Typography color="textSecondary" gutterBottom>
                       Ad Unlock Rate
@@ -560,15 +560,15 @@ const VideoAnalyticsPage: React.FC = () => {
                   Recent Activity (Last 7 Days)
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={4}>
+                  <Grid xs={4}>
                     <Typography color="textSecondary">Coin Unlocks</Typography>
                     <Typography variant="h6">{detailedAnalytics.recent.coinUnlocks}</Typography>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid xs={4}>
                     <Typography color="textSecondary">Ad Unlocks</Typography>
                     <Typography variant="h6">{detailedAnalytics.recent.adUnlocks}</Typography>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid xs={4}>
                     <Typography color="textSecondary">Views</Typography>
                     <Typography variant="h6">{detailedAnalytics.recent.views}</Typography>
                   </Grid>
@@ -577,7 +577,7 @@ const VideoAnalyticsPage: React.FC = () => {
 
               {/* Unlock Breakdown */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <Paper sx={{ p: 2 }}>
                     <Typography variant="h6" gutterBottom>
                       Coin Unlocks ({detailedAnalytics.details.coinUnlockUsers.length})
@@ -599,7 +599,7 @@ const VideoAnalyticsPage: React.FC = () => {
                     </List>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <Paper sx={{ p: 2 }}>
                     <Typography variant="h6" gutterBottom>
                       Ad Unlocks ({detailedAnalytics.details.adUnlockUsers.length})

@@ -371,7 +371,7 @@ const FcmCampaignPage: React.FC = () => {
         <DialogContent sx={{ pt: 2 }}>
           <Grid container spacing={2}>
             {campaignTemplates.map((template) => (
-              <Grid item xs={12} sm={6} key={template.id}>
+              <Grid xs={12} sm={6} key={template.id}>
                 <Card
                   sx={{
                     cursor: 'pointer',

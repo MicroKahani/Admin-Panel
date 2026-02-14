@@ -26,17 +26,18 @@ import FcmCampaignPage from './pages/FcmCampaignPage';
 import GeneralNotificationPage from './pages/GeneralNotificationPage';
 import AutomatedNotificationsPage from './pages/AutomatedNotificationsPage';
 import CarouselManagementPage from './pages/CarouselManagementPage';
+import ErrorBoundary from './components/ErrorBoundary';
 const drawerWidth = 220;
 
 const theme = createTheme({
   palette: {
-    primary: { 
+    primary: {
       main: '#1f2937',
       light: '#374151',
       dark: '#111827',
       contrastText: '#ffffff',
     },
-    secondary: { 
+    secondary: {
       main: '#3b82f6',
       light: '#60a5fa',
       dark: '#1d4ed8',
@@ -57,7 +58,7 @@ const theme = createTheme({
       main: '#06b6d4',
       light: '#67e8f9',
     },
-    background: { 
+    background: {
       default: '#f9fafb',
       paper: '#ffffff',
     },
@@ -180,9 +181,9 @@ const MainLayout: React.FC = () => {
   const drawerContent = (
     <>
       <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 2 }}>
-        <Typography 
-          variant="h6" 
-          sx={{ 
+        <Typography
+          variant="h6"
+          sx={{
             fontWeight: 700,
             background: 'linear-gradient(135deg, #1f2937 0%, #3b82f6 100%)',
             backgroundClip: 'text',
@@ -197,9 +198,9 @@ const MainLayout: React.FC = () => {
         <List sx={{ flex: 1 }}>
           {menuItems.map((item) => (
             <ListItem disablePadding key={item.text} sx={{ mb: 0.5, px: 1 }}>
-              <ListItemButton 
-                component={Link} 
-                to={item.path} 
+              <ListItemButton
+                component={Link}
+                to={item.path}
                 selected={location.pathname === item.path}
                 onClick={() => isMobile && setMobileOpen(false)}
                 sx={{
@@ -213,7 +214,7 @@ const MainLayout: React.FC = () => {
                 <ListItemIcon sx={{ minWidth: 40, color: 'inherit' }}>
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText 
+                <ListItemText
                   primary={item.text}
                   primaryTypographyProps={{
                     sx: { fontSize: '0.9rem', fontWeight: 500 }
@@ -229,9 +230,9 @@ const MainLayout: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <AppBar 
-        position="fixed" 
-        sx={{ 
+      <AppBar
+        position="fixed"
+        sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1,
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
@@ -252,7 +253,7 @@ const MainLayout: React.FC = () => {
               Admin Panel
             </Typography>
           </Box>
-          
+
           {admin && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
@@ -263,10 +264,10 @@ const MainLayout: React.FC = () => {
                   {admin.role || 'Admin'}
                 </Typography>
               </Box>
-              <Button 
-                color="inherit" 
-                onClick={logout} 
-                sx={{ 
+              <Button
+                color="inherit"
+                onClick={logout}
+                sx={{
                   textTransform: 'none',
                   '&:hover': {
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -279,7 +280,7 @@ const MainLayout: React.FC = () => {
           )}
         </Toolbar>
       </AppBar>
-      
+
       <Box
         component="nav"
         sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
@@ -294,8 +295,8 @@ const MainLayout: React.FC = () => {
           }}
           sx={{
             display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { 
-              width: drawerWidth, 
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
               boxSizing: 'border-box',
               background: 'linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)',
               borderRight: '1px solid #e5e7eb',
@@ -304,14 +305,14 @@ const MainLayout: React.FC = () => {
         >
           {drawerContent}
         </Drawer>
-        
+
         {/* Desktop Drawer */}
         <Drawer
           variant="permanent"
           sx={{
             display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': { 
-              width: drawerWidth, 
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
               boxSizing: 'border-box',
               background: 'linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)',
               borderRight: '1px solid #e5e7eb',
@@ -323,13 +324,13 @@ const MainLayout: React.FC = () => {
         </Drawer>
       </Box>
 
-      <Box 
-        component="main" 
-        sx={{ 
-          flexGrow: 1, 
-          bgcolor: 'background.default', 
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          bgcolor: 'background.default',
           minHeight: '100vh',
-          width: { md: `calc(100% - ${drawerWidth}px)` } 
+          width: { md: `calc(100% - ${drawerWidth}px)` }
         }}
       >
         <Toolbar />
@@ -358,14 +359,16 @@ const MainLayout: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <MainLayout />
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <Router>
+            <MainLayout />
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

@@ -1,23 +1,17 @@
 // frontend/src/services/api.ts
 
 import axios from 'axios';
-
-const enableApiDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_LOGS === 'true';
-const logApi = (...args: any[]) => {
-  if (enableApiDebug) {
-    console.log('[API]', ...args);
-  }
-};
+import logger from '../utils/logger';
+import { API_CONFIG, ERROR_MESSAGES } from '../utils/constants';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   withCredentials: true, // CRITICAL: Send cookies with every request
+  timeout: API_CONFIG.TIMEOUT,
 });
 
 api.interceptors.request.use((config) => {
-  logApi('Request', {
-    method: config.method,
-    url: config.url,
+  logger.api(config.method || 'GET', config.url || '', {
     params: config.params,
     hasData: Boolean(config.data),
   });
@@ -27,24 +21,39 @@ api.interceptors.request.use((config) => {
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => {
-    logApi('Response', {
-      url: response.config.url,
+    logger.debug('API', `Response from ${response.config.url}`, {
       status: response.status,
     });
     return response;
   },
   (error) => {
-    logApi('Error', {
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.message,
-    });
+    const url = error.config?.url || 'unknown';
+    const status = error.response?.status;
+
+    logger.apiError(error.config?.method || 'GET', url, error);
+
     // Only redirect to login if it's NOT the /me endpoint
     // This prevents redirect loop during initial auth check
-    if (error.response?.status === 401 && !error.config.url?.includes('/auth/me')) {
-      console.log('API: 401 error, redirecting to login');
+    if (status === 401 && !url.includes('/auth/me')) {
+      logger.warn('API', '401 Unauthorized - redirecting to login');
       window.location.href = '/login';
     }
+
+    // Enhance error with user-friendly message
+    if (!error.response) {
+      error.userMessage = ERROR_MESSAGES.NETWORK_ERROR;
+    } else if (status === 401) {
+      error.userMessage = ERROR_MESSAGES.UNAUTHORIZED;
+    } else if (status === 403) {
+      error.userMessage = ERROR_MESSAGES.FORBIDDEN;
+    } else if (status === 404) {
+      error.userMessage = ERROR_MESSAGES.NOT_FOUND;
+    } else if (status && status >= 500) {
+      error.userMessage = ERROR_MESSAGES.SERVER_ERROR;
+    } else {
+      error.userMessage = error.response?.data?.message || ERROR_MESSAGES.VALIDATION_ERROR;
+    }
+
     return Promise.reject(error);
   }
 );
@@ -212,20 +221,20 @@ export async function deleteVideo(videoId: string) {
 // ========== Season Management ==========
 export const getAllSeasons = () => api.get('/videos/seasons');
 
-export const getSeasonById = (seasonId: string) => 
+export const getSeasonById = (seasonId: string) =>
   api.get(`/videos/seasons/${seasonId}`);
 
-export const createSeason = (formData: FormData) => 
+export const createSeason = (formData: FormData) =>
   api.post('/videos/seasons', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 
-export const updateSeason = (seasonId: string, formData: FormData) => 
+export const updateSeason = (seasonId: string, formData: FormData) =>
   api.put(`/videos/seasons/${seasonId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 
-export const deleteSeason = (seasonId: string) => 
+export const deleteSeason = (seasonId: string) =>
   api.delete(`/videos/seasons/${seasonId}`);
 
 // ========== Video/Episode Management ==========
@@ -235,10 +244,10 @@ export const deleteSeason = (seasonId: string) =>
 //   seasonId?: string;
 // }) => api.get('/videos', { params });
 
-export const getVideoById = (videoId: string) => 
+export const getVideoById = (videoId: string) =>
   api.get(`/videos/${videoId}`);
 
-export const getEpisodesBySeason = (seasonId: string) => 
+export const getEpisodesBySeason = (seasonId: string) =>
   api.get(`/content/episodes/${seasonId}`);
 
 export const getEpisodesBySeasonAdmin = async (seasonId: string) => {

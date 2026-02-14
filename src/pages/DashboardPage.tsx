@@ -1,5 +1,3 @@
-// frontend/src/pages/DashboardPage.tsx
-
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -25,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { getDashboardAnalytics } from '../services/api';
+import logger from '../utils/logger';
 
 interface DashboardAnalytics {
   overview: {
@@ -78,11 +77,11 @@ const DashboardPage: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await getDashboardAnalytics();
+      const response: any = await getDashboardAnalytics();
       setAnalytics(response.data || null);
     } catch (err: any) {
-      console.error('Failed to fetch dashboard analytics:', err);
-      setError(err.response?.data?.message || 'Failed to load dashboard data');
+      logger.error('DashboardPage', 'Failed to fetch dashboard analytics', err);
+      setError(err.userMessage || err.response?.data?.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -107,10 +106,10 @@ const DashboardPage: React.FC = () => {
     <Box sx={{ pb: 4 }}>
       {/* Header Section */}
       <Box sx={{ mb: 4 }}>
-        <Typography 
-          variant="h4" 
-          fontWeight="bold" 
-          sx={{ 
+        <Typography
+          variant="h4"
+          fontWeight="bold"
+          sx={{
             background: 'linear-gradient(135deg, #1f2937 0%, #3b82f6 100%)',
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
@@ -126,11 +125,11 @@ const DashboardPage: React.FC = () => {
       </Box>
 
       {error && (
-        <Paper 
-          sx={{ 
-            p: 3, 
-            mb: 3, 
-            bgcolor: '#fee2e2', 
+        <Paper
+          sx={{
+            p: 3,
+            mb: 3,
+            bgcolor: '#fee2e2',
             borderLeft: '4px solid #ef4444',
             color: '#7f1d1d',
           }}
@@ -146,9 +145,9 @@ const DashboardPage: React.FC = () => {
       ) : analytics ? (
         <>
           {/* Welcome Card */}
-          <Paper 
-            sx={{ 
-              p: 3, 
+          <Paper
+            sx={{
+              p: 3,
               mb: 4,
               background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)',
               border: '1px solid rgba(59, 130, 246, 0.2)',
@@ -157,9 +156,9 @@ const DashboardPage: React.FC = () => {
           >
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Box>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
+                <Typography
+                  variant="h6"
+                  sx={{
                     color: '#1f2937',
                     fontWeight: 600,
                     mb: 0.5,
@@ -180,16 +179,16 @@ const DashboardPage: React.FC = () => {
           </Paper>
 
           {/* Content Overview Section */}
-          <Typography 
-            variant="h5" 
-            fontWeight="bold" 
-            gutterBottom 
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            gutterBottom
             sx={{ mt: 4, mb: 2 }}
           >
             Content Overview
           </Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box
                   sx={{
@@ -226,7 +225,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box
                   sx={{
@@ -263,7 +262,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box
                   sx={{
@@ -297,7 +296,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box
                   sx={{
@@ -334,16 +333,16 @@ const DashboardPage: React.FC = () => {
           </Grid>
 
           {/* Users Overview */}
-          <Typography 
-            variant="h5" 
-            fontWeight="bold" 
-            gutterBottom 
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            gutterBottom
             sx={{ mt: 4, mb: 2 }}
           >
             Users Overview
           </Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -357,7 +356,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -371,7 +370,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -385,7 +384,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -402,16 +401,16 @@ const DashboardPage: React.FC = () => {
           </Grid>
 
           {/* Engagement Overview */}
-          <Typography 
-            variant="h5" 
-            fontWeight="bold" 
-            gutterBottom 
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            gutterBottom
             sx={{ mt: 4, mb: 2 }}
           >
             Engagement Overview
           </Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={4}>
+            <Grid xs={12} sm={4}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -425,7 +424,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid xs={12} sm={4}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(244, 63, 94, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -439,7 +438,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid xs={12} sm={4}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -456,16 +455,16 @@ const DashboardPage: React.FC = () => {
           </Grid>
 
           {/* Revenue Overview */}
-          <Typography 
-            variant="h5" 
-            fontWeight="bold" 
-            gutterBottom 
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            gutterBottom
             sx={{ mt: 4, mb: 2 }}
           >
             Revenue Overview
           </Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -481,7 +480,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -495,7 +494,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -509,7 +508,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -528,16 +527,16 @@ const DashboardPage: React.FC = () => {
           </Grid>
 
           {/* Recent Activity (Last 7 Days) */}
-          <Typography 
-            variant="h5" 
-            fontWeight="bold" 
-            gutterBottom 
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            gutterBottom
             sx={{ mt: 4, mb: 2 }}
           >
             Recent Activity (Last 7 Days)
           </Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom sx={{ fontSize: '0.875rem' }}>
@@ -547,7 +546,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom sx={{ fontSize: '0.875rem' }}>
@@ -557,7 +556,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom sx={{ fontSize: '0.875rem' }}>
@@ -569,7 +568,7 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom sx={{ fontSize: '0.875rem' }}>
@@ -584,27 +583,27 @@ const DashboardPage: React.FC = () => {
           {/* Top Content */}
           {(analytics.topContent.videos.length > 0 || analytics.topContent.seasons.length > 0) && (
             <>
-              <Typography 
-                variant="h5" 
-                fontWeight="bold" 
-                gutterBottom 
+              <Typography
+                variant="h5"
+                fontWeight="bold"
+                gutterBottom
                 sx={{ mt: 4, mb: 2 }}
               >
                 Top Performing Content
               </Typography>
               <Grid container spacing={2}>
                 {analytics.topContent.videos.length > 0 && (
-                  <Grid item xs={12} md={6}>
+                  <Grid xs={12} md={6}>
                     <Paper sx={{ p: 3 }}>
                       <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                         🎬 Top Videos
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         {analytics.topContent.videos.map((video: any, index: number) => (
-                          <Box 
-                            key={index} 
-                            sx={{ 
-                              p: 2, 
+                          <Box
+                            key={index}
+                            sx={{
+                              p: 2,
                               bgcolor: index === 0 ? 'rgba(59, 130, 246, 0.05)' : 'rgba(107, 114, 128, 0.03)',
                               borderLeft: index === 0 ? '4px solid #3b82f6' : '4px solid #d1d5db',
                               borderRadius: 1,
@@ -615,9 +614,9 @@ const DashboardPage: React.FC = () => {
                             }}
                           >
                             <Box display="flex" justifyContent="space-between" alignItems="start" mb={1}>
-                              <Typography 
-                                variant="body2" 
-                                sx={{ 
+                              <Typography
+                                variant="body2"
+                                sx={{
                                   fontWeight: 600,
                                   color: '#1f2937',
                                 }}
@@ -625,7 +624,7 @@ const DashboardPage: React.FC = () => {
                                 {index + 1}. {video.seasonId?.title && `${video.seasonId.title} - `}{video.title}
                               </Typography>
                               {index === 0 && (
-                                <Box 
+                                <Box
                                   sx={{
                                     display: 'inline-block',
                                     px: 1.5,
@@ -642,21 +641,21 @@ const DashboardPage: React.FC = () => {
                               )}
                             </Box>
                             <Box display="flex" gap={1} flexWrap="wrap">
-                              <Chip 
-                                label={`${formatNumber(video.views)} views`} 
-                                size="small" 
+                              <Chip
+                                label={`${formatNumber(video.views)} views`}
+                                size="small"
                                 icon={<Visibility sx={{ fontSize: '1rem !important' }} />}
                                 sx={{ bgcolor: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4' }}
                               />
-                              <Chip 
-                                label={`${formatNumber(video.likes?.length || 0)} likes`} 
-                                size="small" 
+                              <Chip
+                                label={`${formatNumber(video.likes?.length || 0)} likes`}
+                                size="small"
                                 icon={<Favorite sx={{ fontSize: '1rem !important' }} />}
                                 sx={{ bgcolor: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e' }}
                               />
-                              <Chip 
-                                label={video.type} 
-                                size="small" 
+                              <Chip
+                                label={video.type}
+                                size="small"
                                 sx={{ bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', textTransform: 'capitalize' }}
                               />
                             </Box>
@@ -667,17 +666,17 @@ const DashboardPage: React.FC = () => {
                   </Grid>
                 )}
                 {analytics.topContent.seasons.length > 0 && (
-                  <Grid item xs={12} md={6}>
+                  <Grid xs={12} md={6}>
                     <Paper sx={{ p: 3 }}>
                       <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                         🎥 Top Series
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         {analytics.topContent.seasons.map((season: any, index: number) => (
-                          <Box 
-                            key={index} 
-                            sx={{ 
-                              p: 2, 
+                          <Box
+                            key={index}
+                            sx={{
+                              p: 2,
                               bgcolor: index === 0 ? 'rgba(16, 185, 129, 0.05)' : 'rgba(107, 114, 128, 0.03)',
                               borderLeft: index === 0 ? '4px solid #10b981' : '4px solid #d1d5db',
                               borderRadius: 1,
@@ -688,9 +687,9 @@ const DashboardPage: React.FC = () => {
                             }}
                           >
                             <Box display="flex" justifyContent="space-between" alignItems="start" mb={1}>
-                              <Typography 
-                                variant="body2" 
-                                sx={{ 
+                              <Typography
+                                variant="body2"
+                                sx={{
                                   fontWeight: 600,
                                   color: '#1f2937',
                                 }}
@@ -698,7 +697,7 @@ const DashboardPage: React.FC = () => {
                                 {index + 1}. {season.title}
                               </Typography>
                               {index === 0 && (
-                                <Box 
+                                <Box
                                   sx={{
                                     display: 'inline-block',
                                     px: 1.5,
@@ -715,15 +714,15 @@ const DashboardPage: React.FC = () => {
                               )}
                             </Box>
                             <Box display="flex" gap={1} flexWrap="wrap">
-                              <Chip 
-                                label={`${formatNumber(season.totalViews || 0)} views`} 
-                                size="small" 
+                              <Chip
+                                label={`${formatNumber(season.totalViews || 0)} views`}
+                                size="small"
                                 icon={<Visibility sx={{ fontSize: '1rem !important' }} />}
                                 sx={{ bgcolor: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4' }}
                               />
-                              <Chip 
-                                label={`${season.episodeCount || 0} episodes`} 
-                                size="small" 
+                              <Chip
+                                label={`${season.episodeCount || 0} episodes`}
+                                size="small"
                                 icon={<Web sx={{ fontSize: '1rem !important' }} />}
                                 sx={{ bgcolor: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' }}
                               />

@@ -11,6 +11,7 @@ import {
 import { sendOTP, verifyOTP } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import logger from '../utils/logger';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -31,9 +32,9 @@ const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await sendOTP(email);
-      console.log('OTP Response:', response); // Debug log
-      
+      const response: any = await sendOTP(email);
+      logger.info('LoginPage', 'OTP sent successfully', { email });
+
       // response is already res.data from API service
       if (response.success) {
         setSuccess(response.message || 'OTP sent to your email!');
@@ -50,13 +51,12 @@ const LoginPage: React.FC = () => {
           });
         }, 1000);
       } else {
-        console.error('OTP failed - response:', response);
+        logger.warn('LoginPage', 'OTP send failed', response);
         setError(response.message || 'Failed to send OTP');
       }
     } catch (err: any) {
-      console.error('OTP Error:', err);
-      console.error('Error response:', err.response?.data);
-      setError(err.response?.data?.message || 'Failed to send OTP');
+      logger.error('LoginPage', 'Error sending OTP', err);
+      setError(err.userMessage || err.response?.data?.message || 'Failed to send OTP');
     } finally {
       setLoading(false);
     }
@@ -68,27 +68,25 @@ const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await verifyOTP(email, otp);
-      console.log('Verify OTP Response:', response); // Debug log
-      
+      const response: any = await verifyOTP(email, otp);
+      logger.info('LoginPage', 'OTP verified successfully');
+
       // response is already res.data from API service
       if (response.success) {
-        console.log('OTP verified! Admin data:', response.data);
-        
+        logger.info('LoginPage', 'Admin authenticated, navigating to dashboard');
+
         // Set admin in context first
         await setAdmin(response.data.admin);
-        console.log('Admin set in context, navigating to dashboard...');
-        
+
         // Navigate to dashboard
         navigate('/dashboard', { replace: true });
       } else {
-        console.error('OTP verification failed:', response);
+        logger.warn('LoginPage', 'OTP verification failed', response);
         setError(response.message || 'Invalid OTP');
       }
     } catch (err: any) {
-      console.error('Verify OTP Error:', err);
-      console.error('Error response:', err.response?.data);
-      setError(err.response?.data?.message || 'Invalid OTP');
+      logger.error('LoginPage', 'Error verifying OTP', err);
+      setError(err.userMessage || err.response?.data?.message || 'Invalid OTP');
     } finally {
       setLoading(false);
     }
