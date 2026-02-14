@@ -191,7 +191,7 @@ const MainLayout: React.FC = () => {
             WebkitTextFillColor: 'transparent',
           }}
         >
-          DesiDrama
+          Micro Kahani
         </Typography>
       </Toolbar>
       <Box sx={{ overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
