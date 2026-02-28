@@ -16,8 +16,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
-import { Save, Refresh, RestartAlt, Info } from '@mui/icons-material';
+import { Save, Refresh, RestartAlt, Info, Android, Apple } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import ConfigEditor from '../components/AppConfig/ConfigEditor';
@@ -57,6 +59,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const AppConfigManagementPage: React.FC = () => {
+  const [platform, setPlatform] = useState<'android' | 'ios'>('android');
   const [tabValue, setTabValue] = useState(0);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [originalConfig, setOriginalConfig] = useState<AppConfig | null>(null);
@@ -71,7 +74,7 @@ const AppConfigManagementPage: React.FC = () => {
   // Fetch current config
   useEffect(() => {
     fetchConfig();
-  }, []);
+  }, [platform]);
 
   // Detect changes
   useEffect(() => {
@@ -85,7 +88,7 @@ const AppConfigManagementPage: React.FC = () => {
     setFetchLoading(true);
     setError('');
     try {
-      const response = await api.get('/admin/app-config');
+      const response = await api.get('/admin/app-config', { params: { platform } });
       const data = response.data?.data || response.data;
       setConfig(data);
       setOriginalConfig(data);
@@ -125,7 +128,7 @@ const AppConfigManagementPage: React.FC = () => {
     setSuccessMessage('');
 
     try {
-      const response = await api.put('/admin/app-config', config);
+      const response = await api.put('/admin/app-config', { ...config, platform });
       const data = response.data?.data || response.data;
       setConfig(data);
       setOriginalConfig(data);
@@ -147,7 +150,7 @@ const AppConfigManagementPage: React.FC = () => {
     setSuccessMessage('');
 
     try {
-      const response = await api.post('/admin/app-config/reset');
+      const response = await api.post('/admin/app-config/reset', { platform });
       const data = response.data?.data || response.data;
       setConfig(data);
       setOriginalConfig(data);
@@ -182,14 +185,30 @@ const AppConfigManagementPage: React.FC = () => {
 
   return (
     <Box>
-      {/* Page Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-          App Configuration Management
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Manage app versions, feature flags, and force update settings
-        </Typography>
+      {/* Page Header and Platform Toggle */}
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+            App Configuration Management
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Manage app versions, feature flags, and force update settings
+          </Typography>
+        </Box>
+        <ToggleButtonGroup
+          color="primary"
+          value={platform}
+          exclusive
+          onChange={(e, newPlatform) => { if (newPlatform) setPlatform(newPlatform); }}
+          aria-label="Platform"
+        >
+          <ToggleButton value="android" aria-label="android">
+            <Android sx={{ mr: 1 }} /> Android
+          </ToggleButton>
+          <ToggleButton value="ios" aria-label="ios">
+            <Apple sx={{ mr: 1 }} /> iOS
+          </ToggleButton>
+        </ToggleButtonGroup>
       </Box>
 
       {/* Alerts */}
