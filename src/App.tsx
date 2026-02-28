@@ -10,6 +10,7 @@ import ViewCarouselIcon from '@mui/icons-material/ViewCarousel';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import PeopleIcon from '@mui/icons-material/People';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
@@ -26,6 +27,7 @@ import FcmCampaignPage from './pages/FcmCampaignPage';
 import GeneralNotificationPage from './pages/GeneralNotificationPage';
 import AutomatedNotificationsPage from './pages/AutomatedNotificationsPage';
 import CarouselManagementPage from './pages/CarouselManagementPage';
+import AppConfigManagementPage from './pages/AppConfigManagementPage';
 import ErrorBoundary from './components/ErrorBoundary';
 const drawerWidth = 220;
 
@@ -147,6 +149,7 @@ const menuItems = [
   { text: 'Video Analytics', icon: <BarChartIcon />, path: '/video-analytics' },
   { text: 'Cashfree Revenue Analytics', icon: <AccountBalanceWalletIcon />, path: '/cashfree-analytics' },
   { text: 'User Management', icon: <PeopleIcon />, path: '/user-management' },
+  { text: 'App Config', icon: <SettingsIcon />, path: '/app-config' },
 ];
 const MainLayout: React.FC = () => {
   const { isAuthenticated, isLoading, logout, admin } = useAuth();
@@ -346,6 +349,7 @@ const MainLayout: React.FC = () => {
             <Route path="/webseries/:seasonId" element={<SeasonDetailPage />} />
             <Route path="/episode/:episodeId" element={<EpisodePlayerPage />} />
             <Route path="/carousel-management" element={<CarouselManagementPage />} />
+            <Route path="/app-config" element={<AppConfigManagementPage />} />
             {/* <Route path="/general-notification" element={<GeneralNotificationPage />} /> */}
             {/* <Route path="/automated-notifications" element={<AutomatedNotificationsPage />} /> */}
             <Route path="/fcm-campaigns" element={<FcmCampaignPage />} />
