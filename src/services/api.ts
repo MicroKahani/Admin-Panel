@@ -32,11 +32,12 @@ api.interceptors.response.use(
 
     logger.apiError(error.config?.method || 'GET', url, error);
 
-    // Only redirect to login if it's NOT the /me endpoint
-    // This prevents redirect loop during initial auth check
+    // On 401: dispatch a session-expired event instead of a hard redirect.
+    // AuthContext listens for this event and shows the SessionExpiredModal.
+    // Exception: /auth/me endpoint — a 401 there just means "not logged in" (initial load).
     if (status === 401 && !url.includes('/auth/me')) {
-      logger.warn('API', '401 Unauthorized - redirecting to login');
-      window.location.href = '/login';
+      logger.warn('API', '401 Unauthorized — dispatching session-expired event');
+      window.dispatchEvent(new CustomEvent('auth:session-expired'));
     }
 
     // Enhance error with user-friendly message
@@ -284,9 +285,7 @@ export const updateCarouselItem = (id: string, data: FormData) => api.put(`/caro
 export const deleteCarouselItem = (id: string) => api.delete(`/carousel/${id}`);
 export const reorderCarouselItems = (items: { id: string; order: number }[]) => api.put('/carousel/reorder', { items });
 
-// Auth APIs (if needed)
-export const login = (credentials: { email: string; password: string }) => api.post('/auth/login', credentials);
-
+// ──────────────────────────────────────────────────────────────────────────────
 // FCM Campaigns
 export const createFcmCampaign = (data: {
   title: string;

@@ -5,7 +5,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import QuizIcon from '@mui/icons-material/Quiz';
-import ScheduleIcon from '@mui/icons-material/Schedule';
+
 import ViewCarouselIcon from '@mui/icons-material/ViewCarousel';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -24,11 +24,10 @@ import WebSeriesPage from './pages/WebSeriesPage';
 import EpisodePlayerPage from './pages/EpisodePlayerPage';
 import SeasonDetailPage from './pages/SeasonDetailPage';
 import FcmCampaignPage from './pages/FcmCampaignPage';
-import GeneralNotificationPage from './pages/GeneralNotificationPage';
-import AutomatedNotificationsPage from './pages/AutomatedNotificationsPage';
 import CarouselManagementPage from './pages/CarouselManagementPage';
 import AppConfigManagementPage from './pages/AppConfigManagementPage';
 import ErrorBoundary from './components/ErrorBoundary';
+import SessionExpiredModal from './components/SessionExpiredModal';
 const drawerWidth = 220;
 
 const theme = createTheme({
@@ -361,6 +360,17 @@ const MainLayout: React.FC = () => {
   );
 };
 
+// Inner wrapper that can access AuthContext (must be child of AuthProvider)
+const AppShell: React.FC = () => {
+  const { sessionExpired, dismissSessionExpired } = useAuth();
+  return (
+    <>
+      <MainLayout />
+      {sessionExpired && <SessionExpiredModal onDismiss={dismissSessionExpired} />}
+    </>
+  );
+};
+
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
@@ -368,7 +378,7 @@ const App: React.FC = () => {
         <CssBaseline />
         <AuthProvider>
           <Router>
-            <MainLayout />
+            <AppShell />
           </Router>
         </AuthProvider>
       </ThemeProvider>
