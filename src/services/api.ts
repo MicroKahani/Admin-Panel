@@ -35,8 +35,13 @@ api.interceptors.response.use(
     // On 401: dispatch a session-expired event instead of a hard redirect.
     // AuthContext listens for this event and shows the SessionExpiredModal.
     // Exception: /auth/me endpoint — a 401 there just means "not logged in" (initial load).
-    if (status === 401 && !url.includes('/auth/me')) {
-      logger.warn('API', '401 Unauthorized — dispatching session-expired event');
+    // BUG FIX: Only trigger session expiry if the 401 came from an `/admin/` route!
+    // Some dashboard components might query `/videos` or `/content` which expect
+    // Bearer user tokens and will return 401 for cookie-only admins. We should NOT
+    // log the admin out if a random video query fails auth.
+    const isAdminRoute = url.includes('/admin/');
+    if (status === 401 && !url.includes('/auth/me') && isAdminRoute) {
+      logger.warn('API', '401 Unauthorized on Admin route — dispatching session-expired event');
       window.dispatchEvent(new CustomEvent('auth:session-expired'));
     }
 
