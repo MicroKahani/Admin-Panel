@@ -11,6 +11,12 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // If the URL starts with a slash, axios will ignore the baseURL's path part (like /api).
+  // We strip it here to ensure it's appended correctly.
+  if (config.url?.startsWith('/')) {
+    config.url = config.url.substring(1);
+  }
+
   logger.api(config.method || 'GET', config.url || '', {
     params: config.params,
     hasData: Boolean(config.data),
