@@ -59,6 +59,7 @@ interface Episode {
   isPublished: boolean;
   views: number;
   adStatus: 'locked' | 'unlocked';
+  adType?: 'interstitial' | 'rewarded_interstitial' | 'rewarded';
   createdAt: string;
 }
 
@@ -106,6 +107,7 @@ const SeasonDetailPage: React.FC = () => {
     episodeNumber: '',
   });
   const [isAdLocked, setIsAdLocked] = useState(false);
+  const [adType, setAdType] = useState<'interstitial' | 'rewarded_interstitial' | 'rewarded'>('rewarded');
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
@@ -119,27 +121,28 @@ const SeasonDetailPage: React.FC = () => {
   // Filtered Episodes Logic
   const filteredEpisodes = episodes.filter((episode) => {
     // Search filter
-    const searchMatch = 
+    const searchMatch =
       episode.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (episode.description && episode.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
     // Status filter
-    const statusMatch = filterStatus === 'all' || 
-      (filterStatus === 'published' ? episode.isPublished : 
-       filterStatus === 'unpublished' ? !episode.isPublished : true);
+    const statusMatch = filterStatus === 'all' ||
+      (filterStatus === 'published' ? episode.isPublished :
+        filterStatus === 'unpublished' ? !episode.isPublished : true);
 
     return searchMatch && statusMatch;
   });
 
   const handleAdStatusChange = async (
     episodeId: string,
-    adStatus: 'locked' | 'unlocked'
+    adStatus: 'locked' | 'unlocked',
+    adType?: 'interstitial' | 'rewarded_interstitial' | 'rewarded'
   ) => {
     try {
-      await updateVideoAdStatus(episodeId, adStatus);
+      await updateVideoAdStatus(episodeId, adStatus, adType);
       // Optimistically update local state or refetch
-      setEpisodes(prev => prev.map(ep => 
-        ep._id === episodeId ? { ...ep, adStatus } : ep
+      setEpisodes(prev => prev.map(ep =>
+        ep._id === episodeId ? { ...ep, adStatus, adType: adType || ep.adType } : ep
       ));
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to update ad status');
@@ -259,36 +262,38 @@ const SeasonDetailPage: React.FC = () => {
 
 
   const handleOpenDialog = () => {
-  const nextEpisodeNumber = episodes.length > 0
-    ? Math.max(...episodes.map(e => e.episodeNumber)) + 1
-    : 1;
+    const nextEpisodeNumber = episodes.length > 0
+      ? Math.max(...episodes.map(e => e.episodeNumber)) + 1
+      : 1;
 
-  setFormData({
-    title: '',
-    description: '',
-    episodeNumber: nextEpisodeNumber.toString(),
-  });
+    setFormData({
+      title: '',
+      description: '',
+      episodeNumber: nextEpisodeNumber.toString(),
+    });
 
-  setSelectedVideoFile(null);
-  setSelectedThumbnailFile(null);
-  setThumbnailPreview('');
-  setIsAdLocked(false);   // ✅ CORRECT PLACE
-  setOpenDialog(true);
-};
+    setSelectedVideoFile(null);
+    setSelectedThumbnailFile(null);
+    setThumbnailPreview('');
+    setIsAdLocked(false);
+    setAdType('rewarded');
+    setOpenDialog(true);
+  };
 
-const handleCloseDialog = () => {
-  setOpenDialog(false);
-  setSelectedVideoFile(null);
-  setSelectedThumbnailFile(null);
-  setThumbnailPreview('');
-  setFormData({
-    title: '',
-    description: '',
-    episodeNumber: '',
-  });
-  setIsAdLocked(false);
-  setError('');
-};
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedVideoFile(null);
+    setSelectedThumbnailFile(null);
+    setThumbnailPreview('');
+    setFormData({
+      title: '',
+      description: '',
+      episodeNumber: '',
+    });
+    setIsAdLocked(false);
+    setAdType('rewarded');
+    setError('');
+  };
 
 
 
@@ -319,6 +324,9 @@ const handleCloseDialog = () => {
         'adStatus',
         isAdLocked ? 'locked' : 'unlocked'
       );
+      if (isAdLocked) {
+        formDataToSend.append('adType', adType);
+      }
 
 
       if (selectedThumbnailFile) {
@@ -564,24 +572,48 @@ const handleCloseDialog = () => {
                     variant="outlined"
                   />
                 </Box>
-                
+
                 {hasPermission('write') && (
-                  <FormControl size="small" fullWidth sx={{ mt: 2 }}>
-                    <InputLabel>Ad Status</InputLabel>
-                    <Select
-                      value={episode.adStatus || 'unlocked'}
-                      label="Ad Status"
-                      onChange={(e) =>
-                        handleAdStatusChange(
-                          episode._id,
-                          e.target.value as 'locked' | 'unlocked'
-                        )
-                      }
-                    >
-                      <MenuItem value="unlocked">Unlocked (No Ad)</MenuItem>
-                      <MenuItem value="locked">Locked (Show Ad)</MenuItem>
-                    </Select>
-                  </FormControl>
+                  <>
+                    <FormControl size="small" fullWidth sx={{ mt: 2 }}>
+                      <InputLabel>Ad Status</InputLabel>
+                      <Select
+                        value={episode.adStatus || 'unlocked'}
+                        label="Ad Status"
+                        onChange={(e) =>
+                          handleAdStatusChange(
+                            episode._id,
+                            e.target.value as 'locked' | 'unlocked',
+                            episode.adType
+                          )
+                        }
+                      >
+                        <MenuItem value="unlocked">Unlocked (No Ad)</MenuItem>
+                        <MenuItem value="locked">Locked (Show Ad)</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    {episode.adStatus === 'locked' && (
+                      <FormControl size="small" fullWidth sx={{ mt: 2 }}>
+                        <InputLabel>Ad Type</InputLabel>
+                        <Select
+                          value={episode.adType || 'rewarded'}
+                          label="Ad Type"
+                          onChange={(e) =>
+                            handleAdStatusChange(
+                              episode._id,
+                              episode.adStatus,
+                              e.target.value as 'interstitial' | 'rewarded_interstitial' | 'rewarded'
+                            )
+                          }
+                        >
+                          <MenuItem value="interstitial">Interstitial</MenuItem>
+                          <MenuItem value="rewarded_interstitial">Rewarded Interstitial (Beta)</MenuItem>
+                          <MenuItem value="rewarded">Rewarded</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  </>
                 )}
               </CardContent>
               <CardActions sx={{ justifyContent: 'space-between' }}>
@@ -696,6 +728,20 @@ const handleCloseDialog = () => {
               }
               label="Require ad to watch this episode"
             />
+            {isAdLocked && (
+              <FormControl fullWidth>
+                <InputLabel>Ad Type</InputLabel>
+                <Select
+                  value={adType}
+                  label="Ad Type"
+                  onChange={(e) => setAdType(e.target.value as any)}
+                >
+                  <MenuItem value="interstitial">Interstitial</MenuItem>
+                  <MenuItem value="rewarded_interstitial">Rewarded Interstitial (Beta)</MenuItem>
+                  <MenuItem value="rewarded">Rewarded</MenuItem>
+                </Select>
+              </FormControl>
+            )}
 
             <TextField
               fullWidth

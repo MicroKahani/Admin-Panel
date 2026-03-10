@@ -193,11 +193,12 @@ export async function getVideoDetailedAnalytics(videoId: string) {
 
 export async function updateVideoAdStatus(
   videoId: string,
-  adStatus: 'locked' | 'unlocked'
+  adStatus: 'locked' | 'unlocked',
+  adType?: 'interstitial' | 'rewarded_interstitial' | 'rewarded'
 ) {
   const res = await api.patch(
     `/admin/videos/${videoId}/ad-status`,
-    { adStatus }
+    { adStatus, adType }
   );
   return res.data;
 }
