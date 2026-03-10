@@ -58,7 +58,7 @@ interface Episode {
   status: 'uploading' | 'processing' | 'completed' | 'failed';
   isPublished: boolean;
   views: number;
-  adStatus: 'locked' | 'unlocked';
+  adStatus: 'unlocked' | 'interstitial' | 'rewarded' | 'rewarded_interstitial';
   createdAt: string;
 }
 
@@ -105,7 +105,7 @@ const SeasonDetailPage: React.FC = () => {
     description: '',
     episodeNumber: '',
   });
-  const [isAdLocked, setIsAdLocked] = useState(false);
+  const [adStatus, setAdStatus] = useState<Episode['adStatus']>('unlocked');
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
@@ -119,26 +119,26 @@ const SeasonDetailPage: React.FC = () => {
   // Filtered Episodes Logic
   const filteredEpisodes = episodes.filter((episode) => {
     // Search filter
-    const searchMatch = 
+    const searchMatch =
       episode.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (episode.description && episode.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
     // Status filter
-    const statusMatch = filterStatus === 'all' || 
-      (filterStatus === 'published' ? episode.isPublished : 
-       filterStatus === 'unpublished' ? !episode.isPublished : true);
+    const statusMatch = filterStatus === 'all' ||
+      (filterStatus === 'published' ? episode.isPublished :
+        filterStatus === 'unpublished' ? !episode.isPublished : true);
 
     return searchMatch && statusMatch;
   });
 
   const handleAdStatusChange = async (
     episodeId: string,
-    adStatus: 'locked' | 'unlocked'
+    adStatus: Episode['adStatus']
   ) => {
     try {
       await updateVideoAdStatus(episodeId, adStatus);
       // Optimistically update local state or refetch
-      setEpisodes(prev => prev.map(ep => 
+      setEpisodes(prev => prev.map(ep =>
         ep._id === episodeId ? { ...ep, adStatus } : ep
       ));
     } catch (err: any) {
@@ -253,36 +253,37 @@ const SeasonDetailPage: React.FC = () => {
 
 
   const handleOpenDialog = () => {
-  const nextEpisodeNumber = episodes.length > 0
-    ? Math.max(...episodes.map(e => e.episodeNumber)) + 1
-    : 1;
+    const nextEpisodeNumber = episodes.length > 0
+      ? Math.max(...episodes.map(e => e.episodeNumber)) + 1
+      : 1;
 
-  setFormData({
-    title: '',
-    description: '',
-    episodeNumber: nextEpisodeNumber.toString(),
-  });
+    setFormData({
+      title: '',
+      description: '',
+      episodeNumber: nextEpisodeNumber.toString(),
+    });
 
-  setSelectedVideoFile(null);
-  setSelectedThumbnailFile(null);
-  setThumbnailPreview('');
-  setIsAdLocked(false);   // ✅ CORRECT PLACE
-  setOpenDialog(true);
-};
+    setSelectedVideoFile(null);
+    setSelectedThumbnailFile(null);
+    setThumbnailPreview('');
+    setAdStatus('unlocked');
+    setOpenDialog(true);
+  };
 
-const handleCloseDialog = () => {
-  setOpenDialog(false);
-  setSelectedVideoFile(null);
-  setSelectedThumbnailFile(null);
-  setThumbnailPreview('');
-  setFormData({
-    title: '',
-    description: '',
-    episodeNumber: '',
-  });
-  setIsAdLocked(false);
-  setError('');
-};
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedVideoFile(null);
+    setSelectedThumbnailFile(null);
+    setThumbnailPreview('');
+    setFormData({
+      title: '',
+      description: '',
+      episodeNumber: '',
+    });
+    setAdStatus('unlocked');
+    setAdStatus('unlocked');
+    setError('');
+  };
 
 
 
@@ -311,7 +312,7 @@ const handleCloseDialog = () => {
       formDataToSend.append('episodeNumber', formData.episodeNumber);
       formDataToSend.append(
         'adStatus',
-        isAdLocked ? 'locked' : 'unlocked'
+        adStatus
       );
 
 
@@ -558,22 +559,24 @@ const handleCloseDialog = () => {
                     variant="outlined"
                   />
                 </Box>
-                
+
                 {hasPermission('write') && (
                   <FormControl size="small" fullWidth sx={{ mt: 2 }}>
-                    <InputLabel>Ad Status</InputLabel>
+                    <InputLabel>Ad Type</InputLabel>
                     <Select
                       value={episode.adStatus || 'unlocked'}
-                      label="Ad Status"
+                      label="Ad Type"
                       onChange={(e) =>
                         handleAdStatusChange(
                           episode._id,
-                          e.target.value as 'locked' | 'unlocked'
+                          e.target.value as Episode['adStatus']
                         )
                       }
                     >
-                      <MenuItem value="unlocked">Unlocked (No Ad)</MenuItem>
-                      <MenuItem value="locked">Locked (Show Ad)</MenuItem>
+                      <MenuItem value="unlocked">None (Unlocked)</MenuItem>
+                      <MenuItem value="interstitial">Interstitial</MenuItem>
+                      <MenuItem value="rewarded">Rewarded</MenuItem>
+                      <MenuItem value="rewarded_interstitial">Rewarded Interstitial</MenuItem>
                     </Select>
                   </FormControl>
                 )}
@@ -680,16 +683,20 @@ const handleCloseDialog = () => {
               onChange={(e) => setFormData({ ...formData, episodeNumber: e.target.value })}
               required
             />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isAdLocked}
-                  onChange={(e) => setIsAdLocked(e.target.checked)}
-                  color="warning"
-                />
-              }
-              label="Require ad to watch this episode"
-            />
+            <FormControl fullWidth>
+              <InputLabel>Ad Requirement</InputLabel>
+              <Select
+                value={adStatus}
+                label="Ad Requirement"
+                onChange={(e) => setAdStatus(e.target.value as Episode['adStatus'])}
+                sx={{ mb: 1 }}
+              >
+                <MenuItem value="unlocked">No Ad (Unlocked)</MenuItem>
+                <MenuItem value="interstitial">Interstitial Ad</MenuItem>
+                <MenuItem value="rewarded">Rewarded Ad</MenuItem>
+                <MenuItem value="rewarded_interstitial">Rewarded Interstitial Ad</MenuItem>
+              </Select>
+            </FormControl>
 
             <TextField
               fullWidth
