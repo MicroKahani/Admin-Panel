@@ -39,7 +39,7 @@ import {
 } from '@mui/icons-material';
 import {
   getSeasonById,
-  getEpisodesBySeason,
+  getEpisodesBySeasonAdmin,
   uploadVideo,
   updateVideo,
   deleteVideo,
@@ -192,23 +192,17 @@ const SeasonDetailPage: React.FC = () => {
   const fetchEpisodes = async () => {
     try {
       console.log('Fetching episodes...');
-      const response = await getEpisodesBySeason(seasonId!);
+      const response = await getEpisodesBySeasonAdmin(seasonId!);
       console.log('Episodes response:', response);
 
-      if (response && (response as any).data) {
-        console.log('Response data:', (response as any).data);
-        const episodesData = (response as any).data.data || (response as any).data;
-        console.log('Episodes data:', episodesData);
+      const episodesData = (response as any).data || response;
+      console.log('Episodes data:', episodesData);
 
-        if (Array.isArray(episodesData)) {
-          setEpisodes(episodesData);
-          console.log('Set episodes:', episodesData.length, 'items');
-        } else {
-          console.error('Episodes data is not an array:', episodesData);
-          setEpisodes([]);
-        }
+      if (Array.isArray(episodesData)) {
+        setEpisodes(episodesData);
+        console.log('Set episodes:', episodesData.length, 'items');
       } else {
-        console.error('No response data');
+        console.error('Episodes data is not an array:', episodesData);
         setEpisodes([]);
       }
     } catch (err) {
