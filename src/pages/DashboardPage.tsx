@@ -38,6 +38,9 @@ interface DashboardAnalytics {
       active: number;
       blocked: number;
       commentBanned: number;
+      dau: number;
+      mau: number;
+      live: number;
     };
     engagement: {
       views: number;
@@ -341,7 +344,7 @@ const DashboardPage: React.FC = () => {
           >
             Users Overview
           </Typography>
-          <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
             <Grid xs={12} sm={6} md={3}>
               <Card sx={{ position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
@@ -395,6 +398,64 @@ const DashboardPage: React.FC = () => {
                     <Typography color="textSecondary" sx={{ fontSize: '0.875rem' }}>Comment Banned</Typography>
                   </Box>
                   <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5, color: '#f59e0b' }}>{analytics.overview.users.commentBanned}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Active User Metrics (DAU / MAU / Live) */}
+          <Grid container spacing={2} sx={{ mb: 4 }}>
+            <Grid xs={12} sm={4}>
+              <Card sx={{ position: 'relative', overflow: 'hidden' }}>
+                <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+                  <Box display="flex" alignItems="center" gap={2} mb={2}>
+                    <Box sx={{ p: 1.5, bgcolor: 'rgba(16, 185, 129, 0.1)', borderRadius: 1.5 }}>
+                      <TrendingUp sx={{ color: '#10b981' }} />
+                    </Box>
+                    <Typography color="textSecondary" sx={{ fontSize: '0.875rem' }}>
+                      Daily Active Users (DAU)
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    {formatNumber(analytics.overview.users.dau)}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid xs={12} sm={4}>
+              <Card sx={{ position: 'relative', overflow: 'hidden' }}>
+                <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+                  <Box display="flex" alignItems="center" gap={2} mb={2}>
+                    <Box sx={{ p: 1.5, bgcolor: 'rgba(59, 130, 246, 0.1)', borderRadius: 1.5 }}>
+                      <People sx={{ color: '#3b82f6' }} />
+                    </Box>
+                    <Typography color="textSecondary" sx={{ fontSize: '0.875rem' }}>
+                      Monthly Active Users (MAU)
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    {formatNumber(analytics.overview.users.mau)}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid xs={12} sm={4}>
+              <Card sx={{ position: 'relative', overflow: 'hidden' }}>
+                <Box sx={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: 'radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+                  <Box display="flex" alignItems="center" gap={2} mb={2}>
+                    <Box sx={{ p: 1.5, bgcolor: 'rgba(6, 182, 212, 0.1)', borderRadius: 1.5 }}>
+                      <Visibility sx={{ color: '#06b6d4' }} />
+                    </Box>
+                    <Typography color="textSecondary" sx={{ fontSize: '0.875rem' }}>
+                      Live Users (last 5 min)
+                    </Typography>
+                  </Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    {formatNumber(analytics.overview.users.live)}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>

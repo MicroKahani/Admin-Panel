@@ -223,8 +223,8 @@ const SeasonDetailPage: React.FC = () => {
   const handleVideoFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 500 * 1024 * 1024) {
-        alert('File size must be less than 500MB');
+      if (file.size > 800 * 1024 * 1024) {
+        alert('File size must be less than 800MB');
         return;
       }
       const allowedTypes = ['video/mp4', 'video/quicktime'];
@@ -637,7 +637,7 @@ const handleCloseDialog = () => {
               sx={{ py: 2 }}
             >
               <Upload sx={{ mr: 1 }} />
-              {selectedVideoFile ? selectedVideoFile.name : 'Select Video (MP4/MOV, max 500MB)'}
+              {selectedVideoFile ? selectedVideoFile.name : 'Select Video (MP4/MOV, max 800MB)'}
               <input
                 type="file"
                 hidden
