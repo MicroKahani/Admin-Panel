@@ -148,9 +148,13 @@ export const deleteAdmin = (adminId: string) => {
 // }
 
 // Video Management APIs
-export async function uploadVideo(formData: FormData) {
+export async function uploadVideo(
+  formData: FormData,
+  onUploadProgress?: (event: ProgressEvent) => void
+) {
   const res = await api.post('/admin/videos', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress,
   });
   return res.data;
 }

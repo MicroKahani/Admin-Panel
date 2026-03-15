@@ -29,6 +29,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  LinearProgress,
 } from '@mui/material';
 import {
   Upload,
@@ -110,6 +111,7 @@ const SeasonDetailPage: React.FC = () => {
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
   const [castMembers, setCastMembers] = useState<CastMember[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const { hasPermission } = useAuth();
 
   // Search and Filter states
@@ -283,6 +285,7 @@ const SeasonDetailPage: React.FC = () => {
     setAdStatus('unlocked');
     setAdStatus('unlocked');
     setError('');
+    setUploadProgress(null);
   };
 
 
@@ -301,6 +304,7 @@ const SeasonDetailPage: React.FC = () => {
       return;
     }
     setLoading(true);
+    setUploadProgress(0);
     setError('');
     try {
       const formDataToSend = new FormData();
@@ -319,7 +323,14 @@ const SeasonDetailPage: React.FC = () => {
       if (selectedThumbnailFile) {
         formDataToSend.append('thumbnail', selectedThumbnailFile);
       }
-      await uploadVideo(formDataToSend);
+      await uploadVideo(formDataToSend, (event) => {
+        if (!event.total) {
+          setUploadProgress(null);
+          return;
+        }
+        const percent = Math.round((event.loaded * 100) / event.total);
+        setUploadProgress(percent);
+      });
 
       alert('Episode upload started! Processing will take some time.');
       handleCloseDialog();
@@ -328,6 +339,7 @@ const SeasonDetailPage: React.FC = () => {
       setError(err.response?.data?.message || 'Upload failed');
     } finally {
       setLoading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -715,6 +727,19 @@ const SeasonDetailPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Brief description..."
             />
+            {loading && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  {uploadProgress !== null
+                    ? `Uploading video... ${uploadProgress}%`
+                    : 'Uploading video...'}
+                </Typography>
+                <LinearProgress
+                  variant={uploadProgress !== null ? 'determinate' : 'indeterminate'}
+                  value={uploadProgress ?? undefined}
+                />
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
