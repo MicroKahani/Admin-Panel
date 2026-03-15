@@ -266,6 +266,9 @@ export const getEpisodesBySeasonAdmin = async (seasonId: string) => {
   });
   return response.data;
 };
+
+export const publishAllEpisodes = (seasonId: string) =>
+  api.put(`/videos/seasons/${seasonId}/publish-all`);
 // export const uploadVideo = (formData: FormData) => 
 //   api.post('/videos', formData, {
 //     headers: { 'Content-Type': 'multipart/form-data' }

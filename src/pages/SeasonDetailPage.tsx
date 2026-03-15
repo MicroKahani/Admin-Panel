@@ -1,5 +1,5 @@
 // frontend/src/pages/SeasonDetailPage.tsx
-// contains the add episode popup + edit episode popup for each season
+// Episode-number-only UI – no title field anywhere
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -41,6 +41,7 @@ import {
   VideoFile as VideoFileIcon,
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
+  DoneAll as DoneAllIcon,
 } from '@mui/icons-material';
 import {
   getSeasonById,
@@ -49,6 +50,7 @@ import {
   updateVideo,
   deleteVideo,
   updateVideoAdStatus,
+  publishAllEpisodes,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import CastCrewManager from '../components/CastCrewManager';
@@ -57,7 +59,7 @@ import CastCrewManager from '../components/CastCrewManager';
 
 interface Episode {
   _id: string;
-  title: string;
+  title: string; // kept in type (backend still stores it) but never shown in UI
   description?: string;
   thumbnailUrl?: string;
   episodeNumber: number;
@@ -89,17 +91,15 @@ interface CastMember {
   role: 'actor' | 'crew';
 }
 
-// ─── Form state shape (shared between upload + edit) ─────────────────────────
+// ─── Form state (no title field) ─────────────────────────────────────────────
 
 interface EpisodeFormState {
-  title: string;
   description: string;
   episodeNumber: string;
   adStatus: Episode['adStatus'];
 }
 
 const EMPTY_FORM: EpisodeFormState = {
-  title: '',
   description: '',
   episodeNumber: '',
   adStatus: 'unlocked',
@@ -107,9 +107,6 @@ const EMPTY_FORM: EpisodeFormState = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/**
- * FFmpeg processing stages shown during video transcoding
- */
 const FFMPEG_STAGES = [
   'Starting...',
   'Transcoding 1080p',
@@ -165,7 +162,7 @@ const validateImageFile = (file: File): string | null => {
   return null;
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── FilePicker sub-component ─────────────────────────────────────────────────
 
 interface FilePickerProps {
   accept: string;
@@ -176,7 +173,7 @@ interface FilePickerProps {
   onChange: (file: File) => void;
   validate: (file: File) => string | null;
   onError: (msg: string) => void;
-  warning?: string; // optional caveat shown below the picker (e.g. "Replacing will unpublish")
+  warning?: string;
 }
 
 const FilePicker: React.FC<FilePickerProps> = ({
@@ -240,18 +237,15 @@ const SeasonDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
 
-  // ── Data state ──
   const [season, setSeason] = useState<Season | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [castMembers, setCastMembers] = useState<CastMember[]>([]);
-
-  // ── UI state ──
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  // ── Upload dialog state ──
+  // Upload dialog
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadForm, setUploadForm] = useState<EpisodeFormState>(EMPTY_FORM);
   const [uploadVideoFile, setUploadVideoFile] = useState<File | null>(null);
@@ -260,7 +254,7 @@ const SeasonDetailPage: React.FC = () => {
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  // ── Edit dialog state ──
+  // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Episode | null>(null);
   const [editForm, setEditForm] = useState<EpisodeFormState>(EMPTY_FORM);
@@ -270,7 +264,7 @@ const SeasonDetailPage: React.FC = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
 
-  // ─── Fetch helpers ──────────────────────────────────────────────────────────
+  // ─── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchSeasonDetails = useCallback(async () => {
     try {
@@ -309,21 +303,7 @@ const SeasonDetailPage: React.FC = () => {
     }
   }, [seasonId, fetchSeasonDetails, fetchEpisodes]);
 
-  // ─── Filtered episodes ──────────────────────────────────────────────────────
-
-  const filteredEpisodes = episodes.filter((ep) => {
-    const lc = searchTerm.toLowerCase();
-    const matchSearch =
-      ep.title.toLowerCase().includes(lc) ||
-      (ep.description ?? '').toLowerCase().includes(lc);
-    const matchStatus =
-      filterStatus === 'all' ||
-      (filterStatus === 'published' ? ep.isPublished :
-       filterStatus === 'unpublished' ? !ep.isPublished : true);
-    return matchSearch && matchStatus;
-  });
-
-  // Poll episodes when any is uploading or processing (to update FFmpeg stage / status)
+  // Poll while any episode is still processing
   const hasProcessingOrUploading = episodes.some(
     (ep) => ep.status === 'processing' || ep.status === 'uploading'
   );
@@ -333,7 +313,20 @@ const SeasonDetailPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [seasonId, hasProcessingOrUploading, fetchEpisodes]);
 
-  // ─── Ad-status quick-change ─────────────────────────────────────────────────
+  // ─── Filtered episodes ───────────────────────────────────────────────────────
+
+  const filteredEpisodes = episodes.filter((ep) => {
+    const lc = searchTerm.toLowerCase();
+    const matchSearch = (ep.description ?? '').toLowerCase().includes(lc) ||
+      String(ep.episodeNumber).includes(lc);
+    const matchStatus =
+      filterStatus === 'all' ||
+      (filterStatus === 'published' ? ep.isPublished :
+       filterStatus === 'unpublished' ? !ep.isPublished : true);
+    return matchSearch && matchStatus;
+  });
+
+  // ─── Handlers ───────────────────────────────────────────────────────────────
 
   const handleAdStatusChange = async (episodeId: string, adStatus: Episode['adStatus']) => {
     try {
@@ -345,8 +338,6 @@ const SeasonDetailPage: React.FC = () => {
     }
   };
 
-  // ─── Publish toggle ─────────────────────────────────────────────────────────
-
   const handleTogglePublish = async (episodeId: string, current: boolean) => {
     try {
       await updateVideo(episodeId, { isPublished: !current } as any);
@@ -356,10 +347,26 @@ const SeasonDetailPage: React.FC = () => {
     }
   };
 
-  // ─── Delete ─────────────────────────────────────────────────────────────────
+  const handlePublishAll = async () => {
+    const unpublishedCount = episodes.filter(e => !e.isPublished && e.status === 'completed').length;
+    if (unpublishedCount === 0) {
+      alert('All completed episodes are already published.');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to publish ${unpublishedCount} episode(s)?`)) return;
+
+    try {
+      const res = await publishAllEpisodes(seasonId!);
+      alert((res as any).data?.message || (res as any).message || 'Episodes published successfully!');
+      fetchEpisodes();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to publish episodes');
+    }
+  };
 
   const handleDelete = async (episodeId: string) => {
-    if (!window.confirm('Are you sure you want to delete this episode? This cannot be undone.')) return;
+    if (!window.confirm('Delete this episode? This cannot be undone.')) return;
     try {
       await deleteVideo(episodeId);
       setEpisodes((prev) => prev.filter((ep) => ep._id !== episodeId));
@@ -368,21 +375,21 @@ const SeasonDetailPage: React.FC = () => {
     }
   };
 
-  // ─── Thumbnail helper ───────────────────────────────────────────────────────
-
   const previewImageFile = (file: File, setter: (s: string) => void) => {
     const reader = new FileReader();
     reader.onloadend = () => setter(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  //  UPLOAD DIALOG
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ─── Upload dialog ───────────────────────────────────────────────────────────
 
   const openUploadDialog = () => {
     const next = episodes.length > 0 ? Math.max(...episodes.map((e) => e.episodeNumber)) + 1 : 1;
-    setUploadForm({ ...EMPTY_FORM, episodeNumber: String(next) });
+    setUploadForm({ 
+      ...EMPTY_FORM, 
+      episodeNumber: String(next),
+      description: season?.description || ''
+    });
     setUploadVideoFile(null);
     setUploadThumbFile(null);
     setUploadThumbPreview('');
@@ -390,34 +397,29 @@ const SeasonDetailPage: React.FC = () => {
     setUploadOpen(true);
   };
 
-  const closeUploadDialog = () => {
-    setUploadOpen(false);
-    setUploadError('');
-  };
+  const closeUploadDialog = () => { setUploadOpen(false); setUploadError(''); };
 
   const handleUpload = async () => {
     if (!uploadVideoFile) { setUploadError('Please select a video file'); return; }
-    if (!uploadForm.title.trim()) { setUploadError('Title is required'); return; }
     if (!uploadForm.episodeNumber || parseInt(uploadForm.episodeNumber) < 1) {
       setUploadError('Enter a valid episode number');
       return;
     }
-
     setUploadLoading(true);
     setUploadError('');
     try {
       const fd = new FormData();
       fd.append('video', uploadVideoFile);
-      fd.append('title', uploadForm.title.trim());
-      fd.append('description', uploadForm.description);
       fd.append('type', 'episode');
       fd.append('seasonId', seasonId!);
       fd.append('episodeNumber', uploadForm.episodeNumber);
       fd.append('adStatus', uploadForm.adStatus);
+      fd.append('description', uploadForm.description);
+      // No title sent — backend auto-generates "Episode N"
       if (uploadThumbFile) fd.append('thumbnail', uploadThumbFile);
 
       await uploadVideo(fd);
-      alert('Episode upload started! It will appear shortly once processed.');
+      alert('Episode upload started! It will appear once processed.');
       closeUploadDialog();
       fetchEpisodes();
     } catch (err: any) {
@@ -427,14 +429,11 @@ const SeasonDetailPage: React.FC = () => {
     }
   };
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  //  EDIT DIALOG
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ─── Edit dialog ─────────────────────────────────────────────────────────────
 
   const openEditDialog = (episode: Episode) => {
     setEditTarget(episode);
     setEditForm({
-      title: episode.title,
       description: episode.description ?? '',
       episodeNumber: String(episode.episodeNumber),
       adStatus: episode.adStatus,
@@ -446,21 +445,14 @@ const SeasonDetailPage: React.FC = () => {
     setEditOpen(true);
   };
 
-  const closeEditDialog = () => {
-    setEditOpen(false);
-    setEditTarget(null);
-    setEditError('');
-  };
+  const closeEditDialog = () => { setEditOpen(false); setEditTarget(null); setEditError(''); };
 
   const handleEditSave = async () => {
     if (!editTarget) return;
-    if (!editForm.title.trim()) { setEditError('Title is required'); return; }
-
     setEditLoading(true);
     setEditError('');
     try {
       const fd = new FormData();
-      fd.append('title', editForm.title.trim());
       fd.append('description', editForm.description);
       fd.append('adStatus', editForm.adStatus);
 
@@ -474,32 +466,20 @@ const SeasonDetailPage: React.FC = () => {
       await updateVideo(editTarget._id, fd);
 
       if (editVideoFile) {
-        // Video is being replaced — mark it as processing in local state
         setEpisodes((prev) =>
           prev.map((ep) =>
             ep._id === editTarget._id
-              ? {
-                  ...ep,
-                  title: editForm.title.trim(),
-                  description: editForm.description,
-                  adStatus: editForm.adStatus,
-                  status: 'processing',
-                  isPublished: false,
-                }
+              ? { ...ep, description: editForm.description, adStatus: editForm.adStatus, status: 'processing', isPublished: false }
               : ep
           )
         );
-        alert(
-          'Video replacement started! The episode will be automatically re-published once processing completes. All likes and views have been preserved.'
-        );
+        alert('Video replacement started! All likes and views are preserved.');
       } else {
-        // Metadata-only update — reflect changes immediately
         setEpisodes((prev) =>
           prev.map((ep) =>
             ep._id === editTarget._id
               ? {
                   ...ep,
-                  title: editForm.title.trim(),
                   description: editForm.description,
                   adStatus: editForm.adStatus,
                   ...(editThumbFile ? { updatedAt: new Date().toISOString() } : {}),
@@ -508,7 +488,6 @@ const SeasonDetailPage: React.FC = () => {
           )
         );
       }
-
       closeEditDialog();
     } catch (err: any) {
       setEditError(err.response?.data?.message || 'Update failed');
@@ -517,7 +496,7 @@ const SeasonDetailPage: React.FC = () => {
     }
   };
 
-  // ─── Loading / error screens ────────────────────────────────────────────────
+  // ─── Loading / error screens ─────────────────────────────────────────────────
 
   if (fetchLoading) {
     return (
@@ -548,18 +527,14 @@ const SeasonDetailPage: React.FC = () => {
     );
   }
 
-  // ─── Main render ────────────────────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <Box>
-      {/* ── Header ── */}
+      {/* Header */}
       <Box sx={{ mb: 3 }}>
         <Breadcrumbs sx={{ mb: 2 }}>
-          <Link
-            color="inherit"
-            href="#"
-            onClick={(e) => { e.preventDefault(); navigate('/webseries'); }}
-          >
+          <Link color="inherit" href="#" onClick={(e) => { e.preventDefault(); navigate('/webseries'); }}>
             Web Series
           </Link>
           <Typography color="text.primary">{season.title}</Typography>
@@ -571,27 +546,37 @@ const SeasonDetailPage: React.FC = () => {
               Season {season.seasonNumber} • {episodes.length} Episodes
             </Typography>
           </Box>
-          {hasPermission('write') && (
-            <Button variant="contained" startIcon={<Upload />} onClick={openUploadDialog}>
-              Add Episode
-            </Button>
-          )}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {hasPermission('write') && (
+              <Button
+                variant="outlined"
+                color="success"
+                startIcon={<DoneAllIcon />}
+                onClick={handlePublishAll}
+                disabled={episodes.filter(e => !e.isPublished && e.status === 'completed').length === 0}
+              >
+                Publish All
+              </Button>
+            )}
+            {hasPermission('write') && (
+              <Button variant="contained" startIcon={<Upload />} onClick={openUploadDialog}>
+                Add Episode
+              </Button>
+            )}
+          </Box>
         </Box>
       </Box>
 
-      {/* ── Non-fatal error banner ── */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>{error}</Alert>
       )}
 
-      {/* ── Season description ── */}
       {season.description && (
         <Paper sx={{ p: 3, mb: 3 }}>
           <Typography variant="body1">{season.description}</Typography>
         </Paper>
       )}
 
-      {/* ── Cast & Crew ── */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <CastCrewManager
           castMembers={castMembers}
@@ -603,17 +588,15 @@ const SeasonDetailPage: React.FC = () => {
         />
       </Paper>
 
-      {/* ── Filters ── */}
+      {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid size={{ xs: 12, sm: 6, md: 8 }}>
             <TextField
-              fullWidth
-              size="small"
-              label="Search Episodes"
+              fullWidth size="small"
+              label="Search by episode number or description"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by title or description…"
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -629,7 +612,7 @@ const SeasonDetailPage: React.FC = () => {
         </Grid>
       </Paper>
 
-      {/* ── Episodes grid ── */}
+      {/* Episodes grid */}
       <Grid container spacing={3}>
         {filteredEpisodes.map((episode) => (
           <Grid size={{ xs: 12, sm: 6, md: 4 }} key={episode._id}>
@@ -639,11 +622,12 @@ const SeasonDetailPage: React.FC = () => {
                 <CardMedia
                   component="img"
                   height="180"
-                  image={cacheBust(episode.thumbnailUrl, episode.updatedAt, episode.episodeNumber) ||
-                    `https://via.placeholder.com/300x180?text=Episode+${episode.episodeNumber}`}
-                  alt={episode.title}
+                  image={
+                    cacheBust(episode.thumbnailUrl, episode.updatedAt, episode.episodeNumber) ||
+                    `https://via.placeholder.com/300x180?text=Episode+${episode.episodeNumber}`
+                  }
+                  alt={`Episode ${episode.episodeNumber}`}
                 />
-                {/* Play button */}
                 <IconButton
                   sx={{
                     position: 'absolute', top: '50%', left: '50%',
@@ -655,16 +639,15 @@ const SeasonDetailPage: React.FC = () => {
                 >
                   <PlayArrow sx={{ fontSize: 38 }} />
                 </IconButton>
-                {/* Episode number badge */}
+                {/* Episode number — the primary label */}
                 <Chip
-                  label={`Ep ${episode.episodeNumber}`}
+                  label={`Episode ${episode.episodeNumber}`}
                   size="small"
                   sx={{
                     position: 'absolute', top: 8, left: 8,
-                    bgcolor: 'rgba(0,0,0,0.7)', color: 'white', fontWeight: 700,
+                    bgcolor: 'rgba(0,0,0,0.75)', color: 'white', fontWeight: 700,
                   }}
                 />
-                {/* Status badge */}
                 {episode.status !== 'completed' && (
                   <Chip
                     label={episode.status.toUpperCase()}
@@ -676,9 +659,9 @@ const SeasonDetailPage: React.FC = () => {
               </Box>
 
               <CardContent sx={{ flexGrow: 1 }}>
-                <Typography variant="h6" noWrap title={episode.title}>{episode.title}</Typography>
+                {/* NO title shown — episode number is the identifier */}
                 <Typography variant="body2" color="text.secondary" sx={{
-                  mt: 0.5, mb: 1,
+                  mb: 1,
                   overflow: 'hidden', display: '-webkit-box',
                   WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                 }}>
@@ -690,47 +673,33 @@ const SeasonDetailPage: React.FC = () => {
                   {episode.isPublished && <Chip label="Published" size="small" color="success" />}
                   <Chip label={`${episode.views ?? 0} views`} size="small" variant="outlined" />
                 </Box>
+
+                {/* FFmpeg stage tracker */}
                 {(episode.status === 'processing' || episode.status === 'uploading') && (
                   <Box sx={{ mt: 1.5 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                      {episode.status === 'uploading' ? 'Status' : 'FFmpeg stages'}
+                      {episode.status === 'uploading' ? 'Uploading…' : 'Processing stages'}
                     </Typography>
-                    {episode.status === 'uploading' && (
-                      <Box sx={{ py: 0.5, px: 1, borderRadius: 1, bgcolor: 'action.selected', fontSize: '0.75rem' }}>
-                        <Typography variant="caption" color="primary.main" fontWeight={600}>
-                          Uploading file...
-                        </Typography>
-                      </Box>
-                    )}
-                    <Stack direction="column" spacing={0.25} sx={{ mt: episode.status === 'uploading' ? 0.5 : 0 }}>
+                    <Stack direction="column" spacing={0.25}>
                       {FFMPEG_STAGES.map((stage) => {
+                        const stageIdx = FFMPEG_STAGES.indexOf(stage);
+                        const currentIdx = episode.processingStage !== undefined
+                          ? FFMPEG_STAGES.indexOf(episode.processingStage as (typeof FFMPEG_STAGES)[number])
+                          : -1;
                         const isCurrent = episode.status === 'processing' && episode.processingStage === stage;
-                        const stageOrder = FFMPEG_STAGES.indexOf(stage);
-                        const currentOrder =
-                          episode.processingStage !== undefined && episode.processingStage !== null
-                            ? FFMPEG_STAGES.indexOf(episode.processingStage as (typeof FFMPEG_STAGES)[number])
-                            : -1;
-                        const isDone = stageOrder >= 0 && currentOrder >= 0 && stageOrder < currentOrder;
+                        const isDone = stageIdx >= 0 && currentIdx >= 0 && stageIdx < currentIdx;
                         return (
                           <Box
                             key={stage}
                             sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1,
-                              py: 0.25,
-                              px: 1,
-                              borderRadius: 1,
+                              display: 'flex', alignItems: 'center', gap: 1,
+                              py: 0.25, px: 1, borderRadius: 1,
                               bgcolor: isCurrent ? 'action.selected' : isDone ? 'action.hover' : 'transparent',
-                              fontSize: '0.75rem',
                             }}
                           >
                             {isDone && <Typography component="span" color="success.main">✓</Typography>}
-                            {isCurrent && !isDone && (
-                              <LinearProgress sx={{ width: 24, height: 4, borderRadius: 1 }} />
-                            )}
+                            {isCurrent && !isDone && <LinearProgress sx={{ width: 24, height: 4, borderRadius: 1 }} />}
                             <Typography
-                              component="span"
                               variant="caption"
                               color={isCurrent ? 'primary.main' : 'text.secondary'}
                               fontWeight={isCurrent ? 600 : 400}
@@ -744,7 +713,6 @@ const SeasonDetailPage: React.FC = () => {
                   </Box>
                 )}
 
-                {/* Ad type selector */}
                 {hasPermission('write') && (
                   <FormControl size="small" fullWidth sx={{ mt: 1 }}>
                     <InputLabel>Ad Type</InputLabel>
@@ -764,7 +732,6 @@ const SeasonDetailPage: React.FC = () => {
               <Divider />
 
               <CardActions sx={{ justifyContent: 'space-between', px: 1.5, py: 1 }}>
-                {/* Left: Publish toggle */}
                 <Box>
                   {hasPermission('write') && episode.status === 'completed' && (
                     <Button size="small" onClick={() => handleTogglePublish(episode._id, episode.isPublished)}>
@@ -772,8 +739,6 @@ const SeasonDetailPage: React.FC = () => {
                     </Button>
                   )}
                 </Box>
-
-                {/* Right: Edit + Delete */}
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
                   {hasPermission('write') && (
                     <Tooltip title="Edit episode">
@@ -808,9 +773,7 @@ const SeasonDetailPage: React.FC = () => {
         </Paper>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-           UPLOAD DIALOG
-         ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── Upload Dialog ── */}
       <Dialog open={uploadOpen} onClose={closeUploadDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>Upload New Episode</DialogTitle>
         <DialogContent>
@@ -825,7 +788,6 @@ const SeasonDetailPage: React.FC = () => {
               validate={validateVideoFile}
               onError={setUploadError}
             />
-
             <FilePicker
               accept="image/jpeg,image/jpg,image/png"
               label="Upload Custom Thumbnail (Optional)"
@@ -836,7 +798,6 @@ const SeasonDetailPage: React.FC = () => {
               validate={validateImageFile}
               onError={setUploadError}
             />
-
             <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>
                 <TextField
@@ -864,23 +825,14 @@ const SeasonDetailPage: React.FC = () => {
                 </FormControl>
               </Grid>
             </Grid>
-
+            {/* NO title field */}
             <TextField
               fullWidth
-              label="Title"
-              value={uploadForm.title}
-              onChange={(e) => setUploadForm((f) => ({ ...f, title: e.target.value }))}
-              required
-              placeholder="Episode title…"
-            />
-            <TextField
-              fullWidth
-              label="Description"
+              label="Description (Optional)"
               multiline
               rows={3}
               value={uploadForm.description}
               onChange={(e) => setUploadForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder="Brief description…"
             />
           </Stack>
         </DialogContent>
@@ -892,28 +844,18 @@ const SeasonDetailPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-           EDIT DIALOG
-         ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── Edit Dialog ── */}
       <Dialog open={editOpen} onClose={closeEditDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
-          Edit Episode {editTarget ? `— Ep ${editTarget.episodeNumber}` : ''}
+          Edit {editTarget ? `Episode ${editTarget.episodeNumber}` : 'Episode'}
         </DialogTitle>
         <DialogContent>
           {editError && <Alert severity="error" sx={{ mb: 2 }}>{editError}</Alert>}
-
           <Stack spacing={2} sx={{ mt: 1 }}>
-            {/* ── Metadata ── */}
+            {/* NO title field */}
             <TextField
               fullWidth
-              label="Title"
-              value={editForm.title}
-              onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
-              required
-            />
-            <TextField
-              fullWidth
-              label="Description"
+              label="Description (Optional)"
               multiline
               rows={3}
               value={editForm.description}
@@ -936,7 +878,6 @@ const SeasonDetailPage: React.FC = () => {
               <Typography variant="caption" color="text.secondary">OPTIONAL FILE REPLACEMENTS</Typography>
             </Divider>
 
-            {/* ── Replace video ── */}
             <FilePicker
               accept="video/mp4,video/quicktime"
               label="Replace Video File (MP4 / MOV, max 800 MB)"
@@ -947,8 +888,6 @@ const SeasonDetailPage: React.FC = () => {
               onError={setEditError}
               warning="Replacing the video will temporarily unpublish the episode while it re-processes. All likes, views, and comments are preserved."
             />
-
-            {/* ── Replace thumbnail ── */}
             <FilePicker
               accept="image/jpeg,image/jpg,image/png"
               label="Replace Thumbnail (Optional)"
@@ -960,7 +899,6 @@ const SeasonDetailPage: React.FC = () => {
               onError={setEditError}
             />
 
-            {/* Show current thumbnail if no new one selected */}
             {!editThumbPreview && editTarget?.thumbnailUrl && (
               <Box>
                 <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>

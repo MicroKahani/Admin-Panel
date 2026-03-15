@@ -75,21 +75,20 @@ const VideoManagementPage: React.FC = () => {
 
   // Filtered videos logic
   const filteredVideos = videos.filter((video) => {
-    // Search term filter
-    const searchMatch = 
-      video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const searchMatch =
+      // For reels, search by title; for episodes, search by episode number or description
+      (video.type === 'reel'
+        ? video.title.toLowerCase().includes(searchTerm.toLowerCase())
+        : String((video as any).episodeNumber || '').includes(searchTerm)) ||
       (video.description && video.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    // Status filter
+
     const statusMatch = filterStatus === 'all' || video.status === filterStatus;
-    
-    // Publish filter
-    const publishMatch = filterPublish === 'all' || 
+
+    const publishMatch = filterPublish === 'all' ||
       (filterPublish === 'published' ? video.isPublished : !video.isPublished);
-      
-    // Season filter (for episodes)
-    const seasonMatch = filterSeason === 'all' || 
-      (video.type === 'episode' && (video as any).seasonId?._id === filterSeason) || 
+
+    const seasonMatch = filterSeason === 'all' ||
+      (video.type === 'episode' && (video as any).seasonId?._id === filterSeason) ||
       (video.type === 'episode' && (video as any).seasonId === filterSeason);
 
     return searchMatch && statusMatch && publishMatch && seasonMatch;
@@ -390,8 +389,9 @@ const VideoManagementPage: React.FC = () => {
                       textOverflow: 'ellipsis',
                     }}
                   >
-
-                  {video.title}
+                  {video.type === 'episode'
+                    ? `Episode ${(video as any).episodeNumber ?? ''}`
+                    : video.title}
                 </Typography>
                 <Typography
                     variant="body2"
