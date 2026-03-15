@@ -49,6 +49,27 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import CastCrewManager from '../components/CastCrewManager';
 
+/**
+ * Max videos in queue. Backend + admin on same PC: FFmpeg uses ~1.5–2.5GB RAM per job.
+ * With 8GB RAM (OS + browser + Node + one transcode) keep queue small; 20 is safe.
+ */
+const MAX_QUEUE_SIZE = 20;
+
+const FFMPEG_STAGES = [
+  'Starting...',
+  'Transcoding 1080p',
+  'Transcoding 720p',
+  'Transcoding 480p',
+  'Transcoding 360p',
+  'Generating master playlist',
+  'Uploading 1080p to R2',
+  'Uploading 720p to R2',
+  'Uploading 480p to R2',
+  'Uploading 360p to R2',
+  'Uploading master playlist to R2',
+  'Thumbnail',
+] as const;
+
 interface Episode {
   _id: string;
   title: string;
@@ -57,6 +78,7 @@ interface Episode {
   episodeNumber: number;
   duration: number;
   status: 'uploading' | 'processing' | 'completed' | 'failed';
+  processingStage?: string;
   isPublished: boolean;
   views: number;
   adStatus: 'unlocked' | 'interstitial' | 'rewarded' | 'rewarded_interstitial';
@@ -112,6 +134,20 @@ const SeasonDetailPage: React.FC = () => {
   const [error, setError] = useState('');
   const [castMembers, setCastMembers] = useState<CastMember[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  /** Queue for multiple video uploads: upload one by one */
+  type QueueItem = {
+    id: string;
+    file: File;
+    title: string;
+    description: string;
+    episodeNumber: string;
+    adStatus: Episode['adStatus'];
+    thumbnailFile?: File;
+  };
+  const [uploadQueue, setUploadQueue] = useState<QueueItem[]>([]);
+  const [queueUploadIndex, setQueueUploadIndex] = useState<number | null>(null);
+  const [queueUploadTotal, setQueueUploadTotal] = useState<number>(0);
+  const [queueUploadProgress, setQueueUploadProgress] = useState<number | null>(null);
   const { hasPermission } = useAuth();
 
   // Search and Filter states
@@ -158,6 +194,16 @@ const SeasonDetailPage: React.FC = () => {
       setFetchLoading(false);
     }
   }, [seasonId]);
+
+  // Poll episodes when any is uploading or processing (to update FFmpeg stage / status)
+  const hasProcessingOrUploading = episodes.some(
+    (ep) => ep.status === 'processing' || ep.status === 'uploading'
+  );
+  useEffect(() => {
+    if (!seasonId || !hasProcessingOrUploading) return;
+    const interval = setInterval(fetchEpisodes, 4000);
+    return () => clearInterval(interval);
+  }, [seasonId, hasProcessingOrUploading]);
 
   const fetchSeasonDetails = async () => {
     try {
@@ -217,19 +263,45 @@ const SeasonDetailPage: React.FC = () => {
   };
 
   const handleVideoFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
+    const files = event.target.files;
+    if (!files?.length) return;
+    const allowedTypes = ['video/mp4', 'video/quicktime'];
+    const nextEp = episodes.length > 0 ? Math.max(...episodes.map((e) => e.episodeNumber)) + 1 : 1;
+    const toAdd: QueueItem[] = [];
+    const spaceLeft = Math.max(0, MAX_QUEUE_SIZE - uploadQueue.length);
+    for (let i = 0; i < files.length && toAdd.length < spaceLeft; i++) {
+      const file = files[i];
       if (file.size > 800 * 1024 * 1024) {
-        alert('File size must be less than 800MB');
-        return;
+        alert(`File ${file.name} must be less than 800MB`);
+        continue;
       }
-      const allowedTypes = ['video/mp4', 'video/quicktime'];
       if (!allowedTypes.includes(file.type)) {
-        alert('Only MP4 and MOV files are allowed');
-        return;
+        alert(`Only MP4 and MOV allowed: ${file.name}`);
+        continue;
       }
-      setSelectedVideoFile(file);
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+      toAdd.push({
+        id: `${Date.now()}-${i}-${file.name}`,
+        file,
+        title: nameWithoutExt,
+        description: '',
+        episodeNumber: String(nextEp + toAdd.length),
+        adStatus,
+        thumbnailFile: undefined,
+      });
     }
+    if (toAdd.length < files.length) {
+      const skipped = files.length - toAdd.length;
+      alert(`Queue limited to ${MAX_QUEUE_SIZE} videos to keep your PC responsive. ${toAdd.length > 0 ? `Added ${toAdd.length}; ${skipped} skipped.` : 'Queue is full.'} Upload this batch, then add more.`);
+    }
+    if (toAdd.length === 1 && uploadQueue.length === 0) {
+      setSelectedVideoFile(toAdd[0].file);
+      setFormData((prev) => ({ ...prev, title: toAdd[0].title, episodeNumber: toAdd[0].episodeNumber }));
+    } else {
+      setUploadQueue((q) => [...q, ...toAdd]);
+      if (toAdd.length > 0) setSelectedVideoFile(null);
+    }
+    event.target.value = '';
   };
 
   const handleThumbnailFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -283,9 +355,22 @@ const SeasonDetailPage: React.FC = () => {
       episodeNumber: '',
     });
     setAdStatus('unlocked');
-    setAdStatus('unlocked');
     setError('');
     setUploadProgress(null);
+    setUploadQueue([]);
+    setQueueUploadIndex(null);
+    setQueueUploadTotal(0);
+    setQueueUploadProgress(null);
+  };
+
+  const removeFromQueue = (id: string) => {
+    setUploadQueue((q) => q.filter((item) => item.id !== id));
+  };
+
+  const updateQueueItem = (id: string, updates: Partial<QueueItem>) => {
+    setUploadQueue((q) =>
+      q.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
   };
 
 
@@ -341,6 +426,60 @@ const SeasonDetailPage: React.FC = () => {
       setLoading(false);
       setUploadProgress(null);
     }
+  };
+
+  const handleUploadAll = async () => {
+    if (uploadQueue.length === 0) return;
+    const invalid = uploadQueue.filter(
+      (item) => !item.title.trim() || !item.episodeNumber || parseInt(item.episodeNumber, 10) < 1
+    );
+    if (invalid.length > 0) {
+      setError('Please set title and valid episode number for all queued videos.');
+      return;
+    }
+    const total = uploadQueue.length;
+    setError('');
+    setLoading(true);
+    setQueueUploadTotal(total);
+    let queue = [...uploadQueue];
+    let currentIndex = 0;
+    while (queue.length > 0) {
+      const item = queue[0];
+      setQueueUploadIndex(currentIndex);
+      setQueueUploadProgress(0);
+      try {
+        const formDataToSend = new FormData();
+        formDataToSend.append('video', item.file);
+        formDataToSend.append('title', item.title);
+        formDataToSend.append('description', item.description);
+        formDataToSend.append('type', 'episode');
+        formDataToSend.append('seasonId', seasonId!);
+        formDataToSend.append('episodeNumber', item.episodeNumber);
+        formDataToSend.append('adStatus', item.adStatus);
+        if (item.thumbnailFile) formDataToSend.append('thumbnail', item.thumbnailFile);
+        await uploadVideo(formDataToSend, (event) => {
+          if (event.total) {
+            setQueueUploadProgress(Math.round((event.loaded * 100) / event.total));
+          }
+        });
+        queue = queue.slice(1);
+        setUploadQueue(queue);
+        currentIndex++;
+        fetchEpisodes();
+      } catch (err: any) {
+        setError(err.response?.data?.message || `Upload failed for ${item.file.name}`);
+        setQueueUploadIndex(null);
+        setQueueUploadProgress(null);
+        setLoading(false);
+        return;
+      }
+    }
+    setQueueUploadIndex(null);
+    setQueueUploadProgress(null);
+    setLoading(false);
+    alert(`All ${total} episode(s) upload started. Processing will take some time.`);
+    handleCloseDialog();
+    fetchEpisodes();
   };
 
   const handleTogglePublish = async (episodeId: string, currentStatus: boolean) => {
@@ -571,6 +710,59 @@ const SeasonDetailPage: React.FC = () => {
                     variant="outlined"
                   />
                 </Box>
+                {(episode.status === 'processing' || episode.status === 'uploading') && (
+                  <Box sx={{ mt: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      {episode.status === 'uploading' ? 'Status' : 'FFmpeg stages'}
+                    </Typography>
+                    {episode.status === 'uploading' && (
+                      <Box sx={{ py: 0.5, px: 1, borderRadius: 1, bgcolor: 'action.selected', fontSize: '0.75rem' }}>
+                        <Typography variant="caption" color="primary.main" fontWeight={600}>
+                          Uploading file...
+                        </Typography>
+                      </Box>
+                    )}
+                    <Stack direction="column" spacing={0.25} sx={{ mt: episode.status === 'uploading' ? 0.5 : 0 }}>
+                      {FFMPEG_STAGES.map((stage) => {
+                        const isCurrent = episode.status === 'processing' && episode.processingStage === stage;
+                        const stageOrder = FFMPEG_STAGES.indexOf(stage);
+                        const currentOrder =
+                          episode.processingStage !== undefined && episode.processingStage !== null
+                            ? FFMPEG_STAGES.indexOf(episode.processingStage as (typeof FFMPEG_STAGES)[number])
+                            : -1;
+                        const isDone = stageOrder >= 0 && currentOrder >= 0 && stageOrder < currentOrder;
+                        return (
+                          <Box
+                            key={stage}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              py: 0.25,
+                              px: 1,
+                              borderRadius: 1,
+                              bgcolor: isCurrent ? 'action.selected' : isDone ? 'action.hover' : 'transparent',
+                              fontSize: '0.75rem',
+                            }}
+                          >
+                            {isDone && <Typography component="span" color="success.main">✓</Typography>}
+                            {isCurrent && !isDone && (
+                              <LinearProgress sx={{ width: 24, height: 4, borderRadius: 1 }} />
+                            )}
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              color={isCurrent ? 'primary.main' : 'text.secondary'}
+                              fontWeight={isCurrent ? 600 : 400}
+                            >
+                              {stage}
+                            </Typography>
+                          </Box>
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+                )}
 
                 {hasPermission('write') && (
                   <FormControl size="small" fullWidth sx={{ mt: 2 }}>
@@ -646,14 +838,74 @@ const SeasonDetailPage: React.FC = () => {
               sx={{ py: 2 }}
             >
               <Upload sx={{ mr: 1 }} />
-              {selectedVideoFile ? selectedVideoFile.name : 'Select Video (MP4/MOV, max 800MB)'}
+              {selectedVideoFile && uploadQueue.length === 0
+                ? selectedVideoFile.name
+                : uploadQueue.length > 0
+                  ? `Add more videos (${uploadQueue.length} in queue)`
+                  : 'Select video(s) — MP4/MOV, max 800MB each'}
               <input
                 type="file"
                 hidden
+                multiple
                 accept="video/mp4,video/quicktime"
                 onChange={handleVideoFileSelect}
               />
             </Button>
+            {uploadQueue.length > 0 && (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Upload queue ({uploadQueue.length})</Typography>
+                <Stack spacing={1}>
+                  {uploadQueue.map((item) => (
+                    <Box
+                      key={item.id}
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 1,
+                        alignItems: 'center',
+                        p: 1,
+                        bgcolor: 'action.hover',
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Typography variant="caption" noWrap sx={{ minWidth: 120 }}>
+                        {item.file.name}
+                      </Typography>
+                      <TextField
+                        size="small"
+                        label="Ep #"
+                        type="number"
+                        value={item.episodeNumber}
+                        onChange={(e) => updateQueueItem(item.id, { episodeNumber: e.target.value })}
+                        sx={{ width: 70 }}
+                      />
+                      <TextField
+                        size="small"
+                        label="Title"
+                        value={item.title}
+                        onChange={(e) => updateQueueItem(item.id, { title: e.target.value })}
+                        sx={{ flex: 1, minWidth: 120 }}
+                      />
+                      <IconButton size="small" color="error" onClick={() => removeFromQueue(item.id)}>
+                        <Delete />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Stack>
+                {queueUploadIndex !== null && queueUploadTotal > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Uploading {queueUploadIndex + 1} of {queueUploadTotal}...
+                    </Typography>
+                    <LinearProgress
+                      variant={queueUploadProgress !== null ? 'determinate' : 'indeterminate'}
+                      value={queueUploadProgress ?? undefined}
+                      sx={{ mt: 0.5 }}
+                    />
+                  </Box>
+                )}
+              </Paper>
+            )}
             <Box>
               <Button
                 variant="outlined"
@@ -727,7 +979,7 @@ const SeasonDetailPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Brief description..."
             />
-            {loading && (
+            {loading && uploadQueue.length === 0 && (
               <Box sx={{ mt: 1 }}>
                 <Typography variant="body2" sx={{ mb: 1 }}>
                   {uploadProgress !== null
@@ -743,10 +995,21 @@ const SeasonDetailPage: React.FC = () => {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleUpload} variant="contained" disabled={loading}>
-            {loading ? 'Uploading...' : 'Upload'}
-          </Button>
+          <Button onClick={handleCloseDialog} disabled={loading}>Cancel</Button>
+          {uploadQueue.length > 0 ? (
+            <Button
+              onClick={handleUploadAll}
+              variant="contained"
+              disabled={loading}
+              startIcon={<Upload />}
+            >
+              {loading ? 'Uploading...' : `Upload all (${uploadQueue.length})`}
+            </Button>
+          ) : (
+            <Button onClick={handleUpload} variant="contained" disabled={loading}>
+              {loading ? 'Uploading...' : 'Upload'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>
