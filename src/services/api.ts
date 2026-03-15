@@ -311,6 +311,71 @@ export const createFcmCampaign = (data: {
 export const getFcmCampaigns = (params?: { page?: number; limit?: number }) =>
   api.get('/notifications/campaigns', { params });
 
+// In-App (non-FCM) Notifications (admin-only)
+export const getInAppBroadcastHistory = (params?: { page?: number; limit?: number }) =>
+  api.get('/admin/notifications/broadcast/history', {
+    params: { page: params?.page ?? 1, limit: params?.limit ?? 100, _: Date.now() },
+  });
+
+export const uploadNotificationImage = (formData: FormData) =>
+  api.post('/admin/notifications/upload-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+export const setActiveBanner = (data: {
+  title: string;
+  message: string;
+  imageUrl?: string;
+  actionLabel?: string;
+  actionRoute?: string;
+}) =>
+  api.post('/admin/notifications/banner', {
+    title: data.title,
+    message: data.message,
+    imageUrl: data.imageUrl,
+    action:
+      data.actionLabel && data.actionRoute
+        ? { label: data.actionLabel, route: data.actionRoute }
+        : undefined,
+  });
+
+export const disableActiveBanner = () => api.delete('/admin/notifications/banner');
+
+export const showBannerFromLog = (logId: string) =>
+  api.post(`/admin/notifications/banner/show/${logId}`);
+
+export const deleteBroadcastLog = (logId: string) =>
+  api.delete(`/admin/notifications/broadcast/history/${logId}`);
+
+export const getActiveBanners = () => api.get('banner');
+
+export const disableBannerById = (bannerId: string) =>
+  api.delete(`/admin/notifications/banner/${bannerId}`);
+
+export const sendInAppBroadcastNotification = (data: {
+  title: string;
+  message: string;
+  type?: 'info' | 'success' | 'warning' | 'error' | 'promo' | 'banner';
+  imageUrl?: string;
+  actionLabel?: string;
+  actionRoute?: string;
+  extraData?: Record<string, any>;
+}) =>
+  api.post('/admin/notifications/broadcast', {
+    title: data.title,
+    message: data.message,
+    type: data.type,
+    imageUrl: data.imageUrl,
+    data: data.extraData,
+    action:
+      data.actionLabel && data.actionRoute
+        ? {
+            label: data.actionLabel,
+            route: data.actionRoute,
+          }
+        : undefined,
+  });
+
 // ---- Automated / General Notifications (frontend stubs) ----
 // These help the existing pages compile and can be wired to real
 // backend endpoints when available.
