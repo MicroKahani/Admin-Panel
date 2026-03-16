@@ -470,11 +470,8 @@ const SeasonDetailPage: React.FC = () => {
       const fd = new FormData();
       fd.append('description', editForm.description);
       fd.append('adStatus', editForm.adStatus);
-<<<<<<< HEAD
       fd.append('episodeNumber', String(newEpNum));
-=======
       fd.append('unlockEpisodes', JSON.stringify((editForm.unlockEpisodes || []).slice(0, 2)));
->>>>>>> 6051e5fe168cdbc6540708007f2a2af812744ca1
 
       if (editVideoFile) {
         fd.append('video', editVideoFile);
