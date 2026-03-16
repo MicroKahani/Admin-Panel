@@ -449,12 +449,21 @@ const SeasonDetailPage: React.FC = () => {
 
   const handleEditSave = async () => {
     if (!editTarget) return;
+
+    // Validate episode number before sending
+    const newEpNum = parseInt(editForm.episodeNumber, 10);
+    if (isNaN(newEpNum) || newEpNum < 1) {
+      setEditError('Episode number must be a positive integer');
+      return;
+    }
+
     setEditLoading(true);
     setEditError('');
     try {
       const fd = new FormData();
       fd.append('description', editForm.description);
       fd.append('adStatus', editForm.adStatus);
+      fd.append('episodeNumber', String(newEpNum));
 
       if (editVideoFile) {
         fd.append('video', editVideoFile);
@@ -469,7 +478,14 @@ const SeasonDetailPage: React.FC = () => {
         setEpisodes((prev) =>
           prev.map((ep) =>
             ep._id === editTarget._id
-              ? { ...ep, description: editForm.description, adStatus: editForm.adStatus, status: 'processing', isPublished: false }
+              ? {
+                  ...ep,
+                  episodeNumber: newEpNum,
+                  description: editForm.description,
+                  adStatus: editForm.adStatus,
+                  status: 'processing',
+                  isPublished: false,
+                }
               : ep
           )
         );
@@ -480,6 +496,7 @@ const SeasonDetailPage: React.FC = () => {
             ep._id === editTarget._id
               ? {
                   ...ep,
+                  episodeNumber: newEpNum,
                   description: editForm.description,
                   adStatus: editForm.adStatus,
                   ...(editThumbFile ? { updatedAt: new Date().toISOString() } : {}),
@@ -852,7 +869,34 @@ const SeasonDetailPage: React.FC = () => {
         <DialogContent>
           {editError && <Alert severity="error" sx={{ mb: 2 }}>{editError}</Alert>}
           <Stack spacing={2} sx={{ mt: 1 }}>
-            {/* NO title field */}
+            {/* Episode number + Ad Requirement side by side */}
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Episode Number"
+                  type="number"
+                  value={editForm.episodeNumber}
+                  onChange={(e) => setEditForm((f) => ({ ...f, episodeNumber: e.target.value }))}
+                  required
+                  inputProps={{ min: 1 }}
+                />
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Ad Requirement</InputLabel>
+                  <Select
+                    value={editForm.adStatus}
+                    label="Ad Requirement"
+                    onChange={(e) => setEditForm((f) => ({ ...f, adStatus: e.target.value as Episode['adStatus'] }))}
+                  >
+                    {(Object.keys(AD_LABELS) as Episode['adStatus'][]).map((k) => (
+                      <MenuItem key={k} value={k}>{AD_LABELS[k]}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
             <TextField
               fullWidth
               label="Description (Optional)"
@@ -861,18 +905,6 @@ const SeasonDetailPage: React.FC = () => {
               value={editForm.description}
               onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
             />
-            <FormControl fullWidth>
-              <InputLabel>Ad Requirement</InputLabel>
-              <Select
-                value={editForm.adStatus}
-                label="Ad Requirement"
-                onChange={(e) => setEditForm((f) => ({ ...f, adStatus: e.target.value as Episode['adStatus'] }))}
-              >
-                {(Object.keys(AD_LABELS) as Episode['adStatus'][]).map((k) => (
-                  <MenuItem key={k} value={k}>{AD_LABELS[k]}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
 
             <Divider>
               <Typography variant="caption" color="text.secondary">OPTIONAL FILE REPLACEMENTS</Typography>

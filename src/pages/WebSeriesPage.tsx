@@ -25,8 +25,8 @@ import {
   MenuItem,
   Select,
 } from '@mui/material';
-import { Add, Edit, Delete, Visibility } from '@mui/icons-material';
-import { getAllSeasons, createSeason, updateSeason, deleteSeason } from '../services/api';
+import { Add, Edit, Delete, Visibility, Public as PublicIcon, PublicOff as PublicOffIcon } from '@mui/icons-material';
+import { getAllSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonPublish } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Season {
@@ -230,6 +230,26 @@ const WebSeriesPage: React.FC = () => {
     }
   };
 
+  const handleTogglePublish = async (season: Season) => {
+    const action = season.isActive ? 'unpublish' : 'publish';
+    if (!window.confirm(`Are you sure you want to ${action} "${season.title}"?\n\n${season.isActive ? 'Users will no longer see this web series in the app.' : 'This web series will become visible to all users in the app.'}`)) return;
+
+    // Optimistic update
+    setSeasons((prev) =>
+      prev.map((s) => s._id === season._id ? { ...s, isActive: !s.isActive } : s)
+    );
+
+    try {
+      await toggleSeasonPublish(season._id, !season.isActive);
+    } catch (err: any) {
+      // Rollback on failure
+      setSeasons((prev) =>
+        prev.map((s) => s._id === season._id ? { ...s, isActive: season.isActive } : s)
+      );
+      alert(err.response?.data?.message || `Failed to ${action} season`);
+    }
+  };
+
   const handleViewSeason = (seasonId: string) => {
     navigate(`/webseries/${seasonId}`);
   };
@@ -313,7 +333,7 @@ const WebSeriesPage: React.FC = () => {
             <Card
                 sx={{
                   width: 320,          // 🔒 SAME WIDTH (same as video page)
-                  height: 460,         // 🔒 SAME HEIGHT
+                  height: 500,         // Increased to fit Publish button
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'hidden',
@@ -351,6 +371,13 @@ const WebSeriesPage: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <Chip label={`Season ${season.seasonNumber}`} size="small" color="primary" />
                   <Chip label={`${season.episodeCount} Episodes`} size="small" variant="outlined" />
+                  <Chip
+                    label={season.isActive ? 'Published' : 'Unpublished'}
+                    size="small"
+                    color={season.isActive ? 'success' : 'default'}
+                    variant={season.isActive ? 'filled' : 'outlined'}
+                    sx={{ ml: 'auto' }}
+                  />
                 </Box>
                 <Typography
                     variant="h6"
@@ -382,45 +409,62 @@ const WebSeriesPage: React.FC = () => {
               <CardActions
                     sx={{
                       mt: 'auto',
-                      minHeight: 52,     // 🔒 SAME footer height
-                      justifyContent: 'space-between',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      gap: 0.5,
                       px: 2,
                       pb: 2,
                     }}
                   >
+                {/* Publish / Unpublish — full width prominent button */}
+                {hasPermission('write') && (
+                  <Button
+                    fullWidth
+                    size="small"
+                    variant={season.isActive ? 'outlined' : 'contained'}
+                    color={season.isActive ? 'error' : 'success'}
+                    startIcon={season.isActive ? <PublicOffIcon /> : <PublicIcon />}
+                    onClick={(e) => { e.stopPropagation(); handleTogglePublish(season); }}
+                  >
+                    {season.isActive ? 'Unpublish' : 'Publish to App'}
+                  </Button>
+                )}
 
-                <Button
-                  size="small"
-                  startIcon={<Visibility />}
-                  onClick={() => handleViewSeason(season._id)}
-                >
-                  View Episodes
-                </Button>
-                <Box>
-                  {hasPermission('write') && (
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenDialog(season);
-                      }}
-                    >
-                      <Edit />
-                    </IconButton>
-                  )}
-                  {hasPermission('delete') && (
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(season._id);
-                      }}
-                    >
-                      <Delete />
-                    </IconButton>
-                  )}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Button
+                    size="small"
+                    startIcon={<Visibility />}
+                    onClick={() => handleViewSeason(season._id)}
+                  >
+                    View Episodes
+                  </Button>
+                  <Box>
+                    {hasPermission('write') && (
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDialog(season);
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                    )}
+                    {hasPermission('delete') && (
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(season._id);
+                        }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    )}
+                  </Box>
                 </Box>
               </CardActions>
             </Card>

@@ -244,6 +244,9 @@ export const updateSeason = (seasonId: string, formData: FormData) =>
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 
+export const toggleSeasonPublish = (seasonId: string, isActive: boolean) =>
+  api.put(`/videos/seasons/${seasonId}`, { isActive });
+
 export const deleteSeason = (seasonId: string) =>
   api.delete(`/videos/seasons/${seasonId}`);
 
