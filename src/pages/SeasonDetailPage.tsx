@@ -97,12 +97,14 @@ interface EpisodeFormState {
   description: string;
   episodeNumber: string;
   adStatus: Episode['adStatus'];
+  unlockEpisodes: string[];
 }
 
 const EMPTY_FORM: EpisodeFormState = {
   description: '',
   episodeNumber: '',
   adStatus: 'unlocked',
+  unlockEpisodes: [],
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -322,7 +324,7 @@ const SeasonDetailPage: React.FC = () => {
     const matchStatus =
       filterStatus === 'all' ||
       (filterStatus === 'published' ? ep.isPublished :
-       filterStatus === 'unpublished' ? !ep.isPublished : true);
+        filterStatus === 'unpublished' ? !ep.isPublished : true);
     return matchSearch && matchStatus;
   });
 
@@ -385,10 +387,11 @@ const SeasonDetailPage: React.FC = () => {
 
   const openUploadDialog = () => {
     const next = episodes.length > 0 ? Math.max(...episodes.map((e) => e.episodeNumber)) + 1 : 1;
-    setUploadForm({ 
-      ...EMPTY_FORM, 
+    setUploadForm({
+      ...EMPTY_FORM,
       episodeNumber: String(next),
-      description: season?.description || ''
+      description: season?.description || '',
+      unlockEpisodes: [],
     });
     setUploadVideoFile(null);
     setUploadThumbFile(null);
@@ -415,6 +418,7 @@ const SeasonDetailPage: React.FC = () => {
       fd.append('episodeNumber', uploadForm.episodeNumber);
       fd.append('adStatus', uploadForm.adStatus);
       fd.append('description', uploadForm.description);
+      fd.append('unlockEpisodes', JSON.stringify((uploadForm.unlockEpisodes || []).slice(0, 2)));
       // No title sent — backend auto-generates "Episode N"
       if (uploadThumbFile) fd.append('thumbnail', uploadThumbFile);
 
@@ -433,10 +437,13 @@ const SeasonDetailPage: React.FC = () => {
 
   const openEditDialog = (episode: Episode) => {
     setEditTarget(episode);
+    const rawUnlock = episode.unlockEpisodes ?? [];
+    const unlockIds = rawUnlock.map((id) => (typeof id === 'string' ? id : (id as { _id?: string })?._id ?? String(id)));
     setEditForm({
       description: episode.description ?? '',
       episodeNumber: String(episode.episodeNumber),
       adStatus: episode.adStatus,
+      unlockEpisodes: unlockIds.slice(0, 2),
     });
     setEditVideoFile(null);
     setEditThumbFile(null);
@@ -463,7 +470,11 @@ const SeasonDetailPage: React.FC = () => {
       const fd = new FormData();
       fd.append('description', editForm.description);
       fd.append('adStatus', editForm.adStatus);
+<<<<<<< HEAD
       fd.append('episodeNumber', String(newEpNum));
+=======
+      fd.append('unlockEpisodes', JSON.stringify((editForm.unlockEpisodes || []).slice(0, 2)));
+>>>>>>> 6051e5fe168cdbc6540708007f2a2af812744ca1
 
       if (editVideoFile) {
         fd.append('video', editVideoFile);
@@ -479,13 +490,13 @@ const SeasonDetailPage: React.FC = () => {
           prev.map((ep) =>
             ep._id === editTarget._id
               ? {
-                  ...ep,
-                  episodeNumber: newEpNum,
-                  description: editForm.description,
-                  adStatus: editForm.adStatus,
-                  status: 'processing',
-                  isPublished: false,
-                }
+                ...ep,
+                episodeNumber: newEpNum,
+                description: editForm.description,
+                adStatus: editForm.adStatus,
+                status: 'processing',
+                isPublished: false,
+              }
               : ep
           )
         );
@@ -495,12 +506,13 @@ const SeasonDetailPage: React.FC = () => {
           prev.map((ep) =>
             ep._id === editTarget._id
               ? {
-                  ...ep,
-                  episodeNumber: newEpNum,
-                  description: editForm.description,
-                  adStatus: editForm.adStatus,
-                  ...(editThumbFile ? { updatedAt: new Date().toISOString() } : {}),
-                }
+                ...ep,
+                episodeNumber: newEpNum,
+                description: editForm.description,
+                adStatus: editForm.adStatus,
+                unlockEpisodes: editForm.unlockEpisodes,
+                ...(editThumbFile ? { updatedAt: new Date().toISOString() } : {}),
+              }
               : ep
           )
         );
@@ -744,6 +756,26 @@ const SeasonDetailPage: React.FC = () => {
                     </Select>
                   </FormControl>
                 )}
+                {episode.unlockEpisodes && episode.unlockEpisodes.length > 0 && (
+                  <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+                      Unlocks:
+                    </Typography>
+                    {episode.unlockEpisodes.map((id) => {
+                      const idStr = typeof id === 'string' ? id : (id as { _id?: string })?._id ?? String(id);
+                      const ep = episodes.find((e) => e._id === idStr);
+                      return (
+                        <Chip
+                          key={idStr}
+                          label={`Ep ${ep?.episodeNumber ?? '?'}`}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                      );
+                    })}
+                  </Box>
+                )}
               </CardContent>
 
               <Divider />
@@ -842,6 +874,51 @@ const SeasonDetailPage: React.FC = () => {
                 </FormControl>
               </Grid>
             </Grid>
+            {episodes.length > 0 && (
+              <FormControl fullWidth size="small">
+                <InputLabel shrink>Unlock Extra Episodes (max 2)</InputLabel>
+                <Select
+                  multiple
+                  value={uploadForm.unlockEpisodes || []}
+                  label="Unlock Extra Episodes (max 2)"
+                  onChange={(e) => {
+                    const val = e.target.value as string[];
+                    setUploadForm((f) => ({ ...f, unlockEpisodes: val.slice(0, 2) }));
+                  }}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 0.5 }}>
+                      {selected.length ? (
+                        selected.map((id) => {
+                          const ep = episodes.find((e) => e._id === id);
+                          return (
+                            <Chip
+                              key={id}
+                              label={`Episode ${ep?.episodeNumber ?? id}`}
+                              size="small"
+                              color="primary"
+                              variant="filled"
+                            />
+                          );
+                        })
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          None selected
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                  MenuProps={{
+                    PaperProps: { sx: { maxHeight: 280 } },
+                  }}
+                >
+                  {episodes.map((ep) => (
+                    <MenuItem key={ep._id} value={ep._id}>
+                      Episode {ep.episodeNumber}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
             {/* NO title field */}
             <TextField
               fullWidth
@@ -905,6 +982,52 @@ const SeasonDetailPage: React.FC = () => {
               value={editForm.description}
               onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
             />
+
+            <FormControl fullWidth size="small">
+              <InputLabel shrink>Unlock Extra Episodes (max 2)</InputLabel>
+              <Select
+                multiple
+                value={editForm.unlockEpisodes || []}
+                label="Unlock Extra Episodes (max 2)"
+                onChange={(e) => {
+                  const val = e.target.value as string[];
+                  setEditForm((f) => ({ ...f, unlockEpisodes: val.slice(0, 2) }));
+                }}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 0.5 }}>
+                    {selected.length ? (
+                      selected.map((id) => {
+                        const ep = episodes.find((e) => e._id === id);
+                        return (
+                          <Chip
+                            key={id}
+                            label={`Episode ${ep?.episodeNumber ?? id}`}
+                            size="small"
+                            color="primary"
+                            variant="filled"
+                          />
+                        );
+                      })
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        None selected
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+                MenuProps={{
+                  PaperProps: { sx: { maxHeight: 280 } },
+                }}
+              >
+                {episodes
+                  .filter((ep) => ep._id !== editTarget?._id)
+                  .map((ep) => (
+                    <MenuItem key={ep._id} value={ep._id}>
+                      Episode {ep.episodeNumber}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
 
             <Divider>
               <Typography variant="caption" color="text.secondary">OPTIONAL FILE REPLACEMENTS</Typography>
