@@ -170,7 +170,7 @@ export async function getAllVideos(filters?: {
 
 export async function updateVideo(
   videoId: string,
-  data: { title?: string; description?: string; isPublished?: boolean; unlockEpisodes?: string[] } | FormData
+  data: { title?: string; description?: string; isPublished?: boolean } | FormData
 ) {
   // Check if data is FormData (for thumbnail upload) or regular object
   const isFormData = data instanceof FormData;
