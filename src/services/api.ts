@@ -206,6 +206,13 @@ export async function updateVideoAdStatus(
   return res.data;
 }
 
+export async function updateVideoSequentialLock(videoId: string, sequentialLock: boolean) {
+  const res = await api.patch(
+    `/admin/videos/${videoId}/sequential-lock`,
+    { sequentialLock }
+  );
+  return res.data;
+}
 
 export async function deleteVideo(videoId: string) {
   const res = await api.delete(`/admin/videos/${videoId}`);

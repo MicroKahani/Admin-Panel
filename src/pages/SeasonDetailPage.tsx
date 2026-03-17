@@ -30,6 +30,8 @@ import {
   LinearProgress,
   Tooltip,
   Divider,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Upload,
@@ -50,6 +52,7 @@ import {
   updateVideo,
   deleteVideo,
   updateVideoAdStatus,
+  updateVideoSequentialLock,
   publishAllEpisodes,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -69,6 +72,7 @@ interface Episode {
   isPublished: boolean;
   views: number;
   adStatus: 'unlocked' | 'interstitial' | 'rewarded' | 'rewarded_interstitial';
+  sequentialLock?: boolean;
   createdAt: string;
   updatedAt?: string;
 }
@@ -334,6 +338,16 @@ const SeasonDetailPage: React.FC = () => {
       setEpisodes((prev) => prev.map((ep) => ep._id === episodeId ? { ...ep, adStatus } : ep));
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to update ad status');
+      fetchEpisodes();
+    }
+  };
+
+  const handleSequentialLockChange = async (episodeId: string, sequentialLock: boolean) => {
+    try {
+      await updateVideoSequentialLock(episodeId, sequentialLock);
+      setEpisodes((prev) => prev.map((ep) => ep._id === episodeId ? { ...ep, sequentialLock } : ep));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update sequential lock');
       fetchEpisodes();
     }
   };
@@ -743,6 +757,20 @@ const SeasonDetailPage: React.FC = () => {
                       ))}
                     </Select>
                   </FormControl>
+                )}
+
+                {hasPermission('write') && (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={!!episode.sequentialLock}
+                        onChange={(e) => handleSequentialLockChange(episode._id, e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label={<Typography variant="caption">Sequential Lock</Typography>}
+                    sx={{ mt: 1 }}
+                  />
                 )}
               </CardContent>
 
