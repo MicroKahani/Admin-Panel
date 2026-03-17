@@ -37,6 +37,8 @@ import {
   disableBannerById,
   showBannerFromLog,
   deleteBroadcastLog,
+  getAllSeasons,
+  getEpisodesBySeasonAdmin,
 } from '../services/api';
 
 const getImageFullUrl = (path: string) => {
@@ -77,12 +79,31 @@ interface BroadcastLog {
   sentAt: string;
 }
 
+interface Season {
+  _id: string;
+  title: string;
+  seasonNumber: number;
+  episodeCount?: number;
+}
+
+interface Episode {
+  _id: string;
+  episodeNumber: number;
+  title?: string;
+  description?: string;
+  isPublished?: boolean;
+}
+
 const NotificationsPage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [type, setType] = useState<'info' | 'success' | 'warning' | 'error' | 'promo' | 'banner'>('promo');
   const [actionLabel, setActionLabel] = useState('Watch now');
-  const [actionRoute, setActionRoute] = useState('');
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
+  const [selectedEpisodeId, setSelectedEpisodeId] = useState<string>('');
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [episodesLoading, setEpisodesLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -114,6 +135,37 @@ const NotificationsPage: React.FC = () => {
     fetchHistory();
     fetchActiveBanners();
   }, []);
+
+  const fetchSeasons = async () => {
+    try {
+      const res: any = await getAllSeasons();
+      const data = res?.data?.data ?? res?.data ?? res;
+      setSeasons(Array.isArray(data) ? data : []);
+    } catch {
+      setSeasons([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchSeasons();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSeasonId) {
+      setEpisodes([]);
+      setSelectedEpisodeId('');
+      return;
+    }
+    setEpisodesLoading(true);
+    setSelectedEpisodeId('');
+    getEpisodesBySeasonAdmin(selectedSeasonId)
+      .then((res: any) => {
+        const data = res?.data ?? res;
+        setEpisodes(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setEpisodes([]))
+      .finally(() => setEpisodesLoading(false));
+  }, [selectedSeasonId]);
 
   const fetchActiveBanners = async () => {
     setBannerLoading(true);
@@ -175,6 +227,8 @@ const NotificationsPage: React.FC = () => {
     setError(null);
     setIsSubmitting(true);
 
+    const actionRoute = selectedEpisodeId ? `/episode/${selectedEpisodeId}` : '';
+
     try {
       if (type === 'banner') {
         await setActiveBanner({
@@ -198,10 +252,12 @@ const NotificationsPage: React.FC = () => {
       setSuccess(true);
       setTitle('');
       setMessage('');
-      setActionRoute('');
+      setSelectedSeasonId('');
+      setSelectedEpisodeId('');
       setImageUrl('');
       await fetchActiveBanners();
       if (type === 'banner') {
+        const routeForLog = selectedEpisodeId ? `/episode/${selectedEpisodeId}` : '';
         setHistory((prev) => [
           {
             _id: `banner-${Date.now()}`,
@@ -209,7 +265,7 @@ const NotificationsPage: React.FC = () => {
             message,
             type: 'banner',
             imageUrl: imageUrl || undefined,
-            action: actionRoute && actionLabel ? { label: actionLabel, route: actionRoute } : undefined,
+            action: routeForLog && actionLabel ? { label: actionLabel, route: routeForLog } : undefined,
             userCount: 0,
             sentAt: new Date().toISOString(),
           },
@@ -393,14 +449,46 @@ const NotificationsPage: React.FC = () => {
                 fullWidth
                 helperText="Optional button label (e.g. “Watch now”)"
               />
-              <TextField
-                label="Action Route"
-                value={actionRoute}
-                onChange={(e) => setActionRoute(e.target.value)}
-                fullWidth
-                placeholder="/series/123 or /episode/456"
-                helperText="Optional deep link route inside the app"
-              />
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  Redirect to Episode (optional)
+                </Typography>
+                <Stack direction="row" spacing={2}>
+                  <TextField
+                    select
+                    label="Season"
+                    value={selectedSeasonId}
+                    onChange={(e) => setSelectedSeasonId(e.target.value)}
+                    fullWidth
+                    size="small"
+                    disabled={seasons.length === 0}
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {seasons.map((s) => (
+                      <MenuItem key={s._id} value={s._id}>
+                        {s.title} (S{s.seasonNumber})
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    label="Episode"
+                    value={selectedEpisodeId}
+                    onChange={(e) => setSelectedEpisodeId(e.target.value)}
+                    fullWidth
+                    size="small"
+                    disabled={!selectedSeasonId || episodesLoading}
+                    helperText={selectedEpisodeId ? 'User will open this episode on tap' : ''}
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {episodes.map((ep) => (
+                      <MenuItem key={ep._id} value={ep._id}>
+                        Episode {ep.episodeNumber}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+              </Box>
             </Stack>
 
             <Button
