@@ -29,6 +29,20 @@ import { Add, Edit, Delete, Visibility, Public as PublicIcon, PublicOff as Publi
 import { getAllSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonPublish } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
+const AVAILABLE_TAGS = [
+  'Trending Now',
+  'Drama & Emotions',
+  'Comedy Section',
+  'Thriller & Suspense',
+  'Religious & Devotional',
+  'Life Philosophy',
+] as const;
+
+interface SeasonTagEntry {
+  name: string;
+  addedAt: string;
+}
+
 interface Season {
   _id: string;
   title: string;
@@ -37,8 +51,12 @@ interface Season {
   episodeCount: number;
   seasonNumber: number;
   isActive: boolean;
+  tags?: SeasonTagEntry[];
   createdAt: string;
 }
+
+const getTagNames = (tags?: (SeasonTagEntry | string)[]): string[] =>
+  (tags || []).map((t) => typeof t === 'string' ? t : t.name);
 
 const WebSeriesPage: React.FC = () => {
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -50,6 +68,7 @@ const WebSeriesPage: React.FC = () => {
     title: '',
     description: '',
     seasonNumber: '',
+    tags: [] as string[],
   });
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -60,6 +79,7 @@ const WebSeriesPage: React.FC = () => {
   // Filtering states
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterTag, setFilterTag] = useState<string>('all');
 
   useEffect(() => {
     fetchSeasons();
@@ -76,12 +96,17 @@ const WebSeriesPage: React.FC = () => {
     const statusMatch = filterStatus === 'all' || 
       (filterStatus === 'active' ? season.isActive : !season.isActive);
 
-    return searchMatch && statusMatch;
+    // Tag filter
+    const tagMatch = filterTag === 'all' || 
+      (season.tags && season.tags.some((t) => (typeof t === 'string' ? t : t.name) === filterTag));
+
+    return searchMatch && statusMatch && tagMatch;
   });
 
   const clearFilters = () => {
     setSearchTerm('');
     setFilterStatus('all');
+    setFilterTag('all');
   };
 
   const fetchSeasons = async () => {
@@ -150,6 +175,7 @@ const WebSeriesPage: React.FC = () => {
         title: season.title,
         description: season.description || '',
         seasonNumber: season.seasonNumber.toString(),
+        tags: getTagNames(season.tags),
       });
       setThumbnailPreview(season.thumbnail || '');
     } else {
@@ -158,6 +184,7 @@ const WebSeriesPage: React.FC = () => {
         title: '',
         description: '',
         seasonNumber: (seasons.length + 1).toString(),
+        tags: [],
       });
       setThumbnailPreview('');
     }
@@ -173,6 +200,7 @@ const WebSeriesPage: React.FC = () => {
       title: '',
       description: '',
       seasonNumber: '',
+      tags: [],
     });
     setError('');
   };
@@ -196,6 +224,7 @@ const WebSeriesPage: React.FC = () => {
       formDataToSend.append('title', formData.title);
       formDataToSend.append('description', formData.description);
       formDataToSend.append('seasonNumber', formData.seasonNumber);
+      formDataToSend.append('tags', JSON.stringify(formData.tags));
 
       if (selectedThumbnailFile) {
         formDataToSend.append('thumbnail', selectedThumbnailFile);
@@ -291,7 +320,7 @@ const WebSeriesPage: React.FC = () => {
               placeholder="Title or description..."
             />
           </Grid>
-          <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 3, md: 2 }}>
             <FormControl fullWidth size="small">
               <InputLabel>Status</InputLabel>
               <Select
@@ -305,7 +334,22 @@ const WebSeriesPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{ xs: 6, sm: 2, md: 2 }}>
+          <Grid size={{ xs: 6, sm: 3, md: 3 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Tag</InputLabel>
+              <Select
+                value={filterTag}
+                label="Tag"
+                onChange={(e) => setFilterTag(e.target.value)}
+              >
+                <MenuItem value="all">All Tags</MenuItem>
+                {AVAILABLE_TAGS.map((tag) => (
+                  <MenuItem key={tag} value={tag}>{tag}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 2, md: 1 }}>
             <Button 
               fullWidth 
               variant="outlined" 
@@ -368,7 +412,7 @@ const WebSeriesPage: React.FC = () => {
                     }}
                   >
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                   <Chip label={`Season ${season.seasonNumber}`} size="small" color="primary" />
                   <Chip label={`${season.episodeCount} Episodes`} size="small" variant="outlined" />
                   <Chip
@@ -379,6 +423,13 @@ const WebSeriesPage: React.FC = () => {
                     sx={{ ml: 'auto' }}
                   />
                 </Box>
+                {season.tags && season.tags.length > 0 && (
+                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 0.5 }}>
+                    {getTagNames(season.tags).map((tagName) => (
+                      <Chip key={tagName} label={tagName} size="small" color="warning" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+                    ))}
+                  </Box>
+                )}
                 <Typography
                     variant="h6"
                     fontWeight="bold"
@@ -551,6 +602,49 @@ const WebSeriesPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Brief description of the season..."
             />
+
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                Home Screen Categories
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {AVAILABLE_TAGS.map((tag) => {
+                  const isSelected = formData.tags.includes(tag);
+                  return (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      clickable
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          tags: isSelected
+                            ? prev.tags.filter((t) => t !== tag)
+                            : [...prev.tags, tag],
+                        }));
+                      }}
+                      color={isSelected ? 'warning' : 'default'}
+                      variant={isSelected ? 'filled' : 'outlined'}
+                      sx={{
+                        fontWeight: isSelected ? 600 : 400,
+                        fontSize: '0.85rem',
+                        py: 2,
+                        transition: 'all 0.2s',
+                        borderWidth: 2,
+                        '&:hover': {
+                          transform: 'scale(1.05)',
+                        },
+                      }}
+                    />
+                  );
+                })}
+              </Box>
+              {formData.tags.length > 0 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {formData.tags.length} tag{formData.tags.length > 1 ? 's' : ''} selected
+                </Typography>
+              )}
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions>
