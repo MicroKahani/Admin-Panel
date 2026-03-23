@@ -26,6 +26,8 @@ import SeasonDetailPage from './pages/SeasonDetailPage';
 import FcmCampaignPage from './pages/FcmCampaignPage';
 import CarouselManagementPage from './pages/CarouselManagementPage';
 import AppConfigManagementPage from './pages/AppConfigManagementPage';
+import NotificationsPage from './pages/NotificationsPage';
+import CategoryOrderPage from './pages/CategoryOrderPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionExpiredModal from './components/SessionExpiredModal';
 const drawerWidth = 220;
@@ -141,10 +143,12 @@ const menuItems = [
   // { text: 'Video Management', icon: <DashboardIcon />, path: '/video-management' },
   { text: 'Role Management', icon: <QuizIcon />, path: '/role-management' },
   { text: 'Web Series', icon: <DashboardIcon />, path: '/webseries' },
+  { text: 'Category Order', icon: <ViewCarouselIcon />, path: '/category-order' },
   { text: 'Carousel Management', icon: <ViewCarouselIcon />, path: '/carousel-management' },
   // { text: 'General Notification', icon: <NotificationsIcon />, path: '/general-notification' },
   // { text: 'Automated Notifications', icon: <ScheduleIcon />, path: '/automated-notifications' },
   { text: 'FCM Campaigns', icon: <NotificationsIcon />, path: '/fcm-campaigns' },
+  { text: 'In-App Notifications', icon: <NotificationsIcon />, path: '/in-app-notifications' },
   { text: 'Video Analytics', icon: <BarChartIcon />, path: '/video-analytics' },
   { text: 'Cashfree Revenue Analytics', icon: <AccountBalanceWalletIcon />, path: '/cashfree-analytics' },
   { text: 'User Management', icon: <PeopleIcon />, path: '/user-management' },
@@ -346,9 +350,11 @@ const MainLayout: React.FC = () => {
             <Route path="/user-management" element={<UserManagementPage />} />
             <Route path="/webseries" element={<WebSeriesPage />} />
             <Route path="/webseries/:seasonId" element={<SeasonDetailPage />} />
+            <Route path="/category-order" element={<CategoryOrderPage />} />
             <Route path="/episode/:episodeId" element={<EpisodePlayerPage />} />
             <Route path="/carousel-management" element={<CarouselManagementPage />} />
             <Route path="/app-config" element={<AppConfigManagementPage />} />
+            <Route path="/in-app-notifications" element={<NotificationsPage />} />
             {/* <Route path="/general-notification" element={<GeneralNotificationPage />} /> */}
             {/* <Route path="/automated-notifications" element={<AutomatedNotificationsPage />} /> */}
             <Route path="/fcm-campaigns" element={<FcmCampaignPage />} />

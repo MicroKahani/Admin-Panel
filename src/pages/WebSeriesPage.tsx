@@ -25,9 +25,23 @@ import {
   MenuItem,
   Select,
 } from '@mui/material';
-import { Add, Edit, Delete, Visibility } from '@mui/icons-material';
-import { getAllSeasons, createSeason, updateSeason, deleteSeason } from '../services/api';
+import { Add, Edit, Delete, Visibility, Public as PublicIcon, PublicOff as PublicOffIcon } from '@mui/icons-material';
+import { getAllSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonPublish } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+
+// 'Trending Now' is excluded — it is automatically determined by highest view count
+const AVAILABLE_TAGS = [
+  'Drama & Emotions',
+  'Comedy Section',
+  'Thriller & Suspense',
+  'Religious & Devotional',
+  'Life Philosophy',
+] as const;
+
+interface SeasonTagEntry {
+  name: string;
+  addedAt: string;
+}
 
 interface Season {
   _id: string;
@@ -37,8 +51,12 @@ interface Season {
   episodeCount: number;
   seasonNumber: number;
   isActive: boolean;
+  tags?: SeasonTagEntry[];
   createdAt: string;
 }
+
+const getTagNames = (tags?: (SeasonTagEntry | string)[]): string[] =>
+  (tags || []).map((t) => typeof t === 'string' ? t : t.name);
 
 const WebSeriesPage: React.FC = () => {
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -50,6 +68,7 @@ const WebSeriesPage: React.FC = () => {
     title: '',
     description: '',
     seasonNumber: '',
+    tags: [] as string[],
   });
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -60,6 +79,7 @@ const WebSeriesPage: React.FC = () => {
   // Filtering states
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterTag, setFilterTag] = useState<string>('all');
 
   useEffect(() => {
     fetchSeasons();
@@ -76,12 +96,17 @@ const WebSeriesPage: React.FC = () => {
     const statusMatch = filterStatus === 'all' || 
       (filterStatus === 'active' ? season.isActive : !season.isActive);
 
-    return searchMatch && statusMatch;
+    // Tag filter
+    const tagMatch = filterTag === 'all' || 
+      (season.tags && season.tags.some((t) => (typeof t === 'string' ? t : t.name) === filterTag));
+
+    return searchMatch && statusMatch && tagMatch;
   });
 
   const clearFilters = () => {
     setSearchTerm('');
     setFilterStatus('all');
+    setFilterTag('all');
   };
 
   const fetchSeasons = async () => {
@@ -150,6 +175,7 @@ const WebSeriesPage: React.FC = () => {
         title: season.title,
         description: season.description || '',
         seasonNumber: season.seasonNumber.toString(),
+        tags: getTagNames(season.tags),
       });
       setThumbnailPreview(season.thumbnail || '');
     } else {
@@ -158,6 +184,7 @@ const WebSeriesPage: React.FC = () => {
         title: '',
         description: '',
         seasonNumber: (seasons.length + 1).toString(),
+        tags: [],
       });
       setThumbnailPreview('');
     }
@@ -173,6 +200,7 @@ const WebSeriesPage: React.FC = () => {
       title: '',
       description: '',
       seasonNumber: '',
+      tags: [],
     });
     setError('');
   };
@@ -196,6 +224,7 @@ const WebSeriesPage: React.FC = () => {
       formDataToSend.append('title', formData.title);
       formDataToSend.append('description', formData.description);
       formDataToSend.append('seasonNumber', formData.seasonNumber);
+      formDataToSend.append('tags', JSON.stringify(formData.tags));
 
       if (selectedThumbnailFile) {
         formDataToSend.append('thumbnail', selectedThumbnailFile);
@@ -227,6 +256,26 @@ const WebSeriesPage: React.FC = () => {
       alert('Season deleted successfully!');
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to delete season');
+    }
+  };
+
+  const handleTogglePublish = async (season: Season) => {
+    const action = season.isActive ? 'unpublish' : 'publish';
+    if (!window.confirm(`Are you sure you want to ${action} "${season.title}"?\n\n${season.isActive ? 'Users will no longer see this web series in the app.' : 'This web series will become visible to all users in the app.'}`)) return;
+
+    // Optimistic update
+    setSeasons((prev) =>
+      prev.map((s) => s._id === season._id ? { ...s, isActive: !s.isActive } : s)
+    );
+
+    try {
+      await toggleSeasonPublish(season._id, !season.isActive);
+    } catch (err: any) {
+      // Rollback on failure
+      setSeasons((prev) =>
+        prev.map((s) => s._id === season._id ? { ...s, isActive: season.isActive } : s)
+      );
+      alert(err.response?.data?.message || `Failed to ${action} season`);
     }
   };
 
@@ -271,7 +320,7 @@ const WebSeriesPage: React.FC = () => {
               placeholder="Title or description..."
             />
           </Grid>
-          <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 3, md: 2 }}>
             <FormControl fullWidth size="small">
               <InputLabel>Status</InputLabel>
               <Select
@@ -285,7 +334,22 @@ const WebSeriesPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{ xs: 6, sm: 2, md: 2 }}>
+          <Grid size={{ xs: 6, sm: 3, md: 3 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Tag</InputLabel>
+              <Select
+                value={filterTag}
+                label="Tag"
+                onChange={(e) => setFilterTag(e.target.value)}
+              >
+                <MenuItem value="all">All Tags</MenuItem>
+                {AVAILABLE_TAGS.map((tag) => (
+                  <MenuItem key={tag} value={tag}>{tag}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 2, md: 1 }}>
             <Button 
               fullWidth 
               variant="outlined" 
@@ -313,7 +377,7 @@ const WebSeriesPage: React.FC = () => {
             <Card
                 sx={{
                   width: 320,          // 🔒 SAME WIDTH (same as video page)
-                  height: 460,         // 🔒 SAME HEIGHT
+                  height: 500,         // Increased to fit Publish button
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'hidden',
@@ -348,10 +412,24 @@ const WebSeriesPage: React.FC = () => {
                     }}
                   >
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                   <Chip label={`Season ${season.seasonNumber}`} size="small" color="primary" />
                   <Chip label={`${season.episodeCount} Episodes`} size="small" variant="outlined" />
+                  <Chip
+                    label={season.isActive ? 'Published' : 'Unpublished'}
+                    size="small"
+                    color={season.isActive ? 'success' : 'default'}
+                    variant={season.isActive ? 'filled' : 'outlined'}
+                    sx={{ ml: 'auto' }}
+                  />
                 </Box>
+                {season.tags && season.tags.length > 0 && (
+                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 0.5 }}>
+                    {getTagNames(season.tags).map((tagName) => (
+                      <Chip key={tagName} label={tagName} size="small" color="warning" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+                    ))}
+                  </Box>
+                )}
                 <Typography
                     variant="h6"
                     fontWeight="bold"
@@ -382,45 +460,62 @@ const WebSeriesPage: React.FC = () => {
               <CardActions
                     sx={{
                       mt: 'auto',
-                      minHeight: 52,     // 🔒 SAME footer height
-                      justifyContent: 'space-between',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      gap: 0.5,
                       px: 2,
                       pb: 2,
                     }}
                   >
+                {/* Publish / Unpublish — full width prominent button */}
+                {hasPermission('write') && (
+                  <Button
+                    fullWidth
+                    size="small"
+                    variant={season.isActive ? 'outlined' : 'contained'}
+                    color={season.isActive ? 'error' : 'success'}
+                    startIcon={season.isActive ? <PublicOffIcon /> : <PublicIcon />}
+                    onClick={(e) => { e.stopPropagation(); handleTogglePublish(season); }}
+                  >
+                    {season.isActive ? 'Unpublish' : 'Publish to App'}
+                  </Button>
+                )}
 
-                <Button
-                  size="small"
-                  startIcon={<Visibility />}
-                  onClick={() => handleViewSeason(season._id)}
-                >
-                  View Episodes
-                </Button>
-                <Box>
-                  {hasPermission('write') && (
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenDialog(season);
-                      }}
-                    >
-                      <Edit />
-                    </IconButton>
-                  )}
-                  {hasPermission('delete') && (
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(season._id);
-                      }}
-                    >
-                      <Delete />
-                    </IconButton>
-                  )}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Button
+                    size="small"
+                    startIcon={<Visibility />}
+                    onClick={() => handleViewSeason(season._id)}
+                  >
+                    View Episodes
+                  </Button>
+                  <Box>
+                    {hasPermission('write') && (
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDialog(season);
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                    )}
+                    {hasPermission('delete') && (
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(season._id);
+                        }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    )}
+                  </Box>
                 </Box>
               </CardActions>
             </Card>
@@ -507,6 +602,49 @@ const WebSeriesPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Brief description of the season..."
             />
+
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                Home Screen Categories
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {AVAILABLE_TAGS.map((tag) => {
+                  const isSelected = formData.tags.includes(tag);
+                  return (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      clickable
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          tags: isSelected
+                            ? prev.tags.filter((t) => t !== tag)
+                            : [...prev.tags, tag],
+                        }));
+                      }}
+                      color={isSelected ? 'warning' : 'default'}
+                      variant={isSelected ? 'filled' : 'outlined'}
+                      sx={{
+                        fontWeight: isSelected ? 600 : 400,
+                        fontSize: '0.85rem',
+                        py: 2,
+                        transition: 'all 0.2s',
+                        borderWidth: 2,
+                        '&:hover': {
+                          transform: 'scale(1.05)',
+                        },
+                      }}
+                    />
+                  );
+                })}
+              </Box>
+              {formData.tags.length > 0 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {formData.tags.length} tag{formData.tags.length > 1 ? 's' : ''} selected
+                </Typography>
+              )}
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions>
