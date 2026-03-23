@@ -29,8 +29,8 @@ import { Add, Edit, Delete, Visibility, Public as PublicIcon, PublicOff as Publi
 import { getAllSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonPublish } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
+// 'Trending Now' is excluded — it is automatically determined by highest view count
 const AVAILABLE_TAGS = [
-  'Trending Now',
   'Drama & Emotions',
   'Comedy Section',
   'Thriller & Suspense',

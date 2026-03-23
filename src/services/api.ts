@@ -257,6 +257,11 @@ export const toggleSeasonPublish = (seasonId: string, isActive: boolean) =>
 export const deleteSeason = (seasonId: string) =>
   api.delete(`/videos/seasons/${seasonId}`);
 
+export const updateCategoryOrder = (data: {
+  category: string;
+  items: { seasonId: string; order: number }[];
+}) => api.put('/videos/seasons/category-order', data);
+
 // ========== Video/Episode Management ==========
 // export const getAllVideos = (params?: {
 //   type?: 'reel' | 'episode';
