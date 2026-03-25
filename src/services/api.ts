@@ -475,8 +475,21 @@ export async function getAllUsers(filters?: {
   limit?: number;
   search?: string;
   status?: 'all' | 'active' | 'blocked' | 'comment_banned';
+  lastLoginFrom?: string;
+  lastLoginTo?: string;
+  createdAtFrom?: string;
+  createdAtTo?: string;
 }) {
   const res = await api.get('/admin/users', { params: filters });
+  return res.data;
+}
+
+export async function getUserAnalytics(filters?: {
+  from: string;
+  to: string;
+  groupBy?: 'hour' | 'day';
+}) {
+  const res = await api.get('/admin/users/analytics', { params: filters });
   return res.data;
 }
 

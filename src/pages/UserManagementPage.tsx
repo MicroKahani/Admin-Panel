@@ -42,10 +42,12 @@ import {
 } from '@mui/icons-material';
 import {
   getAllUsers,
+  getUserAnalytics,
   banUser,
   unbanUser,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface User {
   _id: string;
@@ -87,20 +89,74 @@ const UserManagementPage: React.FC = () => {
   const [banType, setBanType] = useState<'partial' | 'complete'>('complete');
   const [unbanType, setUnbanType] = useState<'partial' | 'complete' | 'both'>('both');
   const [actionLoading, setActionLoading] = useState(false);
+  const [timeFilter, setTimeFilter] = useState<'all' | '1hr' | '5hr' | 'custom'>('all');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
-  }, [page, statusFilter, search]);
+    if (timeFilter !== 'all') {
+      fetchAnalytics();
+    } else {
+      setAnalyticsData([]);
+    }
+  }, [page, statusFilter, search, timeFilter, customFrom, customTo]);
+
+  const fetchAnalytics = async () => {
+    if (timeFilter === 'all' || (timeFilter === 'custom' && (!customFrom || !customTo))) return;
+    
+    setAnalyticsLoading(true);
+    try {
+      let from: string | undefined, to: string | undefined;
+      const now = new Date();
+      if (timeFilter === '1hr') {
+        from = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+        to = now.toISOString();
+      } else if (timeFilter === '5hr') {
+        from = new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString();
+        to = now.toISOString();
+      } else if (timeFilter === 'custom') {
+        from = new Date(customFrom).toISOString();
+        to = new Date(customTo).toISOString();
+      }
+      
+      const groupBy = (timeFilter === '1hr' || timeFilter === '5hr') ? 'hour' : 'day';
+      
+      if (from && to) {
+        const response = await getUserAnalytics({ from, to, groupBy });
+        setAnalyticsData(response.data || []);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch analytics:', err);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
     setError('');
     try {
+      let lastLoginFrom: string | undefined, lastLoginTo: string | undefined;
+      const now = new Date();
+      if (timeFilter === '1hr') {
+        lastLoginFrom = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+      } else if (timeFilter === '5hr') {
+        lastLoginFrom = new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString();
+      } else if (timeFilter === 'custom') {
+        if (customFrom) lastLoginFrom = new Date(customFrom).toISOString();
+        if (customTo) lastLoginTo = new Date(customTo).toISOString();
+      }
+
       const response = await getAllUsers({
         page,
         limit: 50,
         search: search || undefined,
         status: statusFilter,
+        lastLoginFrom,
+        lastLoginTo,
       });
       setUsers(response.data || []);
       setStats(response.stats || null);
@@ -258,12 +314,57 @@ const UserManagementPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
+          <Grid xs={12} sm={3}>
+            <FormControl fullWidth>
+              <InputLabel>Time Filter</InputLabel>
+              <Select
+                value={timeFilter}
+                label="Time Filter"
+                onChange={(e) => {
+                  setTimeFilter(e.target.value as any);
+                  setPage(1);
+                }}
+              >
+                <MenuItem value="all">All Time</MenuItem>
+                <MenuItem value="1hr">Last 1 Hour</MenuItem>
+                <MenuItem value="5hr">Last 5 Hours</MenuItem>
+                <MenuItem value="custom">Custom</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          {timeFilter === 'custom' && (
+            <>
+              <Grid xs={12} sm={3}>
+                <TextField
+                  fullWidth
+                  type="datetime-local"
+                  label="From"
+                  InputLabelProps={{ shrink: true }}
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                />
+              </Grid>
+              <Grid xs={12} sm={3}>
+                <TextField
+                  fullWidth
+                  type="datetime-local"
+                  label="To"
+                  InputLabelProps={{ shrink: true }}
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                />
+              </Grid>
+            </>
+          )}
           <Grid xs={12} sm={2}>
             <Button
               variant="outlined"
               onClick={() => {
                 setSearch('');
                 setStatusFilter('all');
+                setTimeFilter('all');
+                setCustomFrom('');
+                setCustomTo('');
                 setPage(1);
               }}
               fullWidth
@@ -289,6 +390,83 @@ const UserManagementPage: React.FC = () => {
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
           {error}
         </Alert>
+      )}
+
+      {/* Analytics Graph */}
+      {timeFilter !== 'all' && (
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Typography variant="h6" gutterBottom fontWeight="bold">Login & Registration Activity</Typography>
+          {analyticsLoading ? (
+            <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
+          ) : analyticsData.length > 0 ? (
+            <Box height={380} width="100%" sx={{ mt: 2 }}>
+              <ResponsiveContainer>
+                <LineChart data={analyticsData} margin={{ top: 10, right: 30, bottom: 20, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="time" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#6b7280', fontSize: 12 }} 
+                    dy={15} 
+                    tickFormatter={(val) => {
+                      if (!val) return '';
+                      // If it's a date+hour (e.g. "2026-03-25 10:00"), format it nicer
+                      if (val.includes(' ')) {
+                        const parts = val.split(' ');
+                        const dateParts = parts[0].split('-');
+                        return `${dateParts[1]}/${dateParts[2]} ${parts[1]}`;
+                      }
+                      return val;
+                    }}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#6b7280', fontSize: 12 }} 
+                    dx={-10} 
+                  />
+                  <RechartsTooltip 
+                    contentStyle={{ 
+                      borderRadius: '12px', 
+                      border: 'none', 
+                      boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      padding: '12px 16px'
+                    }}
+                    cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  />
+                  <Legend 
+                    iconType="circle" 
+                    wrapperStyle={{ paddingTop: '20px', paddingBottom: '10px' }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="logins" 
+                    stroke="#3b82f6" 
+                    name="Total Logins" 
+                    strokeWidth={4} 
+                    dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#3b82f6' }} 
+                    activeDot={{ r: 7, strokeWidth: 0, fill: '#2563eb' }} 
+                    animationDuration={1500}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="registrations" 
+                    stroke="#10b981" 
+                    name="New Registrations" 
+                    strokeWidth={4} 
+                    dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#10b981' }} 
+                    activeDot={{ r: 7, strokeWidth: 0, fill: '#059669' }} 
+                    animationDuration={1500}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
+          ) : (
+            <Typography color="textSecondary" py={2}>No analytics data available for this timeframe.</Typography>
+          )}
+        </Paper>
       )}
 
       {/* Users Table */}
