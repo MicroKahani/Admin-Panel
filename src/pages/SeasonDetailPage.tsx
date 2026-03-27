@@ -397,12 +397,21 @@ const SeasonDetailPage: React.FC = () => {
 
   // ─── Upload dialog ───────────────────────────────────────────────────────────
 
-  const openUploadDialog = () => {
-    const next = episodes.length > 0 ? Math.max(...episodes.map((e) => e.episodeNumber)) + 1 : 1;
-    setUploadForm({
-      ...EMPTY_FORM,
-      episodeNumber: String(next),
-      description: season?.description || '',
+  const openUploadDialog = async () => {
+    // Always fetch fresh episode list before computing the next episode number
+    // to avoid race conditions where stale state suggests a duplicate number.
+    await fetchEpisodes();
+    // Use a functional updater so we always see the latest episodes state
+    setEpisodes((latestEpisodes) => {
+      const next = latestEpisodes.length > 0
+        ? Math.max(...latestEpisodes.map((e) => e.episodeNumber)) + 1
+        : 1;
+      setUploadForm({
+        ...EMPTY_FORM,
+        episodeNumber: String(next),
+        description: season?.description || '',
+      });
+      return latestEpisodes; // no change to episodes, just reading it
     });
     setUploadVideoFile(null);
     setUploadThumbFile(null);
@@ -590,8 +599,13 @@ const SeasonDetailPage: React.FC = () => {
               </Button>
             )}
             {hasPermission('write') && (
-              <Button variant="contained" startIcon={<Upload />} onClick={openUploadDialog}>
-                Add Episode
+              <Button
+                variant="contained"
+                startIcon={<Upload />}
+                onClick={openUploadDialog}
+                disabled={uploadLoading || hasProcessingOrUploading}
+              >
+                {hasProcessingOrUploading ? 'Processing…' : 'Add Episode'}
               </Button>
             )}
           </Box>
