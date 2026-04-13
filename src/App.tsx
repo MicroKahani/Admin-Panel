@@ -11,7 +11,6 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import PeopleIcon from '@mui/icons-material/People';
 import SettingsIcon from '@mui/icons-material/Settings';
-import CampaignIcon from '@mui/icons-material/Campaign';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
@@ -27,7 +26,6 @@ import SeasonDetailPage from './pages/SeasonDetailPage';
 import FcmCampaignPage from './pages/FcmCampaignPage';
 import CarouselManagementPage from './pages/CarouselManagementPage';
 import AppConfigManagementPage from './pages/AppConfigManagementPage';
-import PromotionalReelBannerPage from './pages/PromotionalReelBannerPage';
 import NotificationsPage from './pages/NotificationsPage';
 import CategoryOrderPage from './pages/CategoryOrderPage';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -147,7 +145,6 @@ const menuItems = [
   { text: 'Web Series', icon: <DashboardIcon />, path: '/webseries' },
   { text: 'Category Order', icon: <ViewCarouselIcon />, path: '/category-order' },
   { text: 'Carousel Management', icon: <ViewCarouselIcon />, path: '/carousel-management' },
-  { text: 'Reel Promo Banner', icon: <CampaignIcon />, path: '/reel-promo-banner' },
   // { text: 'General Notification', icon: <NotificationsIcon />, path: '/general-notification' },
   // { text: 'Automated Notifications', icon: <ScheduleIcon />, path: '/automated-notifications' },
   { text: 'FCM Campaigns', icon: <NotificationsIcon />, path: '/fcm-campaigns' },
@@ -356,7 +353,6 @@ const MainLayout: React.FC = () => {
             <Route path="/category-order" element={<CategoryOrderPage />} />
             <Route path="/episode/:episodeId" element={<EpisodePlayerPage />} />
             <Route path="/carousel-management" element={<CarouselManagementPage />} />
-            <Route path="/reel-promo-banner" element={<PromotionalReelBannerPage />} />
             <Route path="/app-config" element={<AppConfigManagementPage />} />
             <Route path="/in-app-notifications" element={<NotificationsPage />} />
             {/* <Route path="/general-notification" element={<GeneralNotificationPage />} /> */}

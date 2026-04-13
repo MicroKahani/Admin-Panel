@@ -57,6 +57,14 @@ import {
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import CastCrewManager from '../components/CastCrewManager';
+import { formatPromoTimestampsForField } from '../utils/promoBannerTimestamps';
+import {
+  promotionRowsToPayload,
+  episodePromotionsToFormRows,
+  newPromotionRow,
+  type PromotionFormRow,
+} from '../utils/inPlayerPromotions';
+import { InPlayerPromotionsEditor } from '../components/InPlayerPromotionsEditor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +81,16 @@ interface Episode {
   views: number;
   adStatus: 'unlocked' | 'interstitial' | 'rewarded' | 'rewarded_interstitial';
   sequentialLock?: boolean;
+  /** @deprecated Legacy; prefer inPlayerPromotions */
+  promoBannerTimestampsSec?: number[];
+  promotionsEnabled?: boolean;
+  inPlayerPromotions?: Array<{
+    title: string;
+    subtitle?: string;
+    imageUrl?: string;
+    linkUrl: string;
+    timestampsSec: number[];
+  }>;
   createdAt: string;
   updatedAt?: string;
 }
@@ -268,6 +286,11 @@ const SeasonDetailPage: React.FC = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
 
+  const [uploadPromotionsEnabled, setUploadPromotionsEnabled] = useState(true);
+  const [uploadPromotionRows, setUploadPromotionRows] = useState<PromotionFormRow[]>([]);
+  const [editPromotionsEnabled, setEditPromotionsEnabled] = useState(true);
+  const [editPromotionRows, setEditPromotionRows] = useState<PromotionFormRow[]>([]);
+
   // ─── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchSeasonDetails = useCallback(async () => {
@@ -408,10 +431,17 @@ const SeasonDetailPage: React.FC = () => {
     setUploadThumbFile(null);
     setUploadThumbPreview('');
     setUploadError('');
+    setUploadPromotionsEnabled(true);
+    setUploadPromotionRows([]);
     setUploadOpen(true);
   };
 
-  const closeUploadDialog = () => { setUploadOpen(false); setUploadError(''); };
+  const closeUploadDialog = () => {
+    setUploadOpen(false);
+    setUploadError('');
+    setUploadPromotionsEnabled(true);
+    setUploadPromotionRows([]);
+  };
 
   const handleUpload = async () => {
     if (!uploadVideoFile) { setUploadError('Please select a video file'); return; }
@@ -429,6 +459,8 @@ const SeasonDetailPage: React.FC = () => {
       fd.append('episodeNumber', uploadForm.episodeNumber);
       fd.append('adStatus', uploadForm.adStatus);
       fd.append('description', uploadForm.description);
+      fd.append('promotionsEnabled', uploadPromotionsEnabled ? 'true' : 'false');
+      fd.append('inPlayerPromotions', JSON.stringify(promotionRowsToPayload(uploadPromotionRows)));
       // No title sent — backend auto-generates "Episode N"
       if (uploadThumbFile) fd.append('thumbnail', uploadThumbFile);
 
@@ -452,6 +484,23 @@ const SeasonDetailPage: React.FC = () => {
       episodeNumber: String(episode.episodeNumber),
       adStatus: episode.adStatus,
     });
+    setEditPromotionsEnabled(episode.promotionsEnabled !== false);
+    if (episode.inPlayerPromotions && episode.inPlayerPromotions.length > 0) {
+      setEditPromotionRows(episodePromotionsToFormRows(episode.inPlayerPromotions));
+    } else if (episode.promoBannerTimestampsSec && episode.promoBannerTimestampsSec.length > 0) {
+      setEditPromotionRows([
+        {
+          ...newPromotionRow(),
+          title: 'Dosh Mukti',
+          subtitle: 'Gemstones & jewellery',
+          imageUrl: '',
+          linkUrl: 'https://dushmuktiv-2-e.vercel.app/',
+          timestampsText: formatPromoTimestampsForField(episode.promoBannerTimestampsSec),
+        },
+      ]);
+    } else {
+      setEditPromotionRows([]);
+    }
     setEditVideoFile(null);
     setEditThumbFile(null);
     setEditThumbPreview('');
@@ -478,6 +527,8 @@ const SeasonDetailPage: React.FC = () => {
       fd.append('description', editForm.description);
       fd.append('adStatus', editForm.adStatus);
       fd.append('episodeNumber', String(newEpNum));
+      fd.append('promotionsEnabled', editPromotionsEnabled ? 'true' : 'false');
+      fd.append('inPlayerPromotions', JSON.stringify(promotionRowsToPayload(editPromotionRows)));
 
       if (editVideoFile) {
         fd.append('video', editVideoFile);
@@ -488,6 +539,8 @@ const SeasonDetailPage: React.FC = () => {
 
       await updateVideo(editTarget._id, fd);
 
+      const savedPromos = promotionRowsToPayload(editPromotionRows);
+
       if (editVideoFile) {
         setEpisodes((prev) =>
           prev.map((ep) =>
@@ -497,6 +550,9 @@ const SeasonDetailPage: React.FC = () => {
                 episodeNumber: newEpNum,
                 description: editForm.description,
                 adStatus: editForm.adStatus,
+                promotionsEnabled: editPromotionsEnabled,
+                inPlayerPromotions: savedPromos,
+                promoBannerTimestampsSec: [],
                 status: 'processing',
                 isPublished: false,
               }
@@ -513,6 +569,9 @@ const SeasonDetailPage: React.FC = () => {
                 episodeNumber: newEpNum,
                 description: editForm.description,
                 adStatus: editForm.adStatus,
+                promotionsEnabled: editPromotionsEnabled,
+                inPlayerPromotions: savedPromos,
+                promoBannerTimestampsSec: [],
                 ...(editThumbFile ? { updatedAt: new Date().toISOString() } : {}),
               }
               : ep
@@ -879,6 +938,13 @@ const SeasonDetailPage: React.FC = () => {
               value={uploadForm.description}
               onChange={(e) => setUploadForm((f) => ({ ...f, description: e.target.value }))}
             />
+            <InPlayerPromotionsEditor
+              enabled={uploadPromotionsEnabled}
+              onEnabledChange={setUploadPromotionsEnabled}
+              rows={uploadPromotionRows}
+              onRowsChange={setUploadPromotionRows}
+              disabled={uploadLoading}
+            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -890,7 +956,7 @@ const SeasonDetailPage: React.FC = () => {
       </Dialog>
 
       {/* ── Edit Dialog ── */}
-      <Dialog open={editOpen} onClose={closeEditDialog} maxWidth="sm" fullWidth>
+      <Dialog open={editOpen} onClose={closeEditDialog} maxWidth="md" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
           Edit {editTarget ? `Episode ${editTarget.episodeNumber}` : 'Episode'}
         </DialogTitle>
@@ -932,6 +998,13 @@ const SeasonDetailPage: React.FC = () => {
               rows={3}
               value={editForm.description}
               onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+            />
+            <InPlayerPromotionsEditor
+              enabled={editPromotionsEnabled}
+              onEnabledChange={setEditPromotionsEnabled}
+              rows={editPromotionRows}
+              onRowsChange={setEditPromotionRows}
+              disabled={editLoading}
             />
 
             <Divider>

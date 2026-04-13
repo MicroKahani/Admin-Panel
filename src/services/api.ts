@@ -312,13 +312,6 @@ export const updateCarouselItem = (id: string, data: FormData) => api.put(`/caro
 export const deleteCarouselItem = (id: string) => api.delete(`/carousel/${id}`);
 export const reorderCarouselItems = (items: { id: string; order: number }[]) => api.put('/carousel/reorder', { items });
 
-/** Reels / episode player top-right promo tab (public app reads GET /api/reel-promo-banner) */
-export const getReelPromoBannerAdmin = () => api.get('/admin/reel-promo-banner');
-export const updateReelPromoBannerAdmin = (formData: FormData) =>
-  api.put('/admin/reel-promo-banner', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-
 // ──────────────────────────────────────────────────────────────────────────────
 // FCM Campaigns
 export const createFcmCampaign = (data: {

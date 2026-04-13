@@ -30,6 +30,14 @@ import {
 } from '@mui/icons-material';
 import { getVideoById, updateVideo, deleteVideo } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { formatPromoTimestampsForField } from '../utils/promoBannerTimestamps';
+import {
+  promotionRowsToPayload,
+  episodePromotionsToFormRows,
+  newPromotionRow,
+  type PromotionFormRow,
+} from '../utils/inPlayerPromotions';
+import { InPlayerPromotionsEditor } from '../components/InPlayerPromotionsEditor';
 
 interface VideoVariant {
   resolution: '360p' | '480p' | '720p' | '1080p';
@@ -56,6 +64,15 @@ interface Video {
     seasonNumber: number;
   };
   createdAt: string;
+  promoBannerTimestampsSec?: number[];
+  promotionsEnabled?: boolean;
+  inPlayerPromotions?: Array<{
+    title: string;
+    subtitle?: string;
+    imageUrl?: string;
+    linkUrl: string;
+    timestampsSec: number[];
+  }>;
 }
 
 // Helper to cache-bust episode poster thumbnails
@@ -82,6 +99,8 @@ const EpisodePlayerPage: React.FC = () => {
     title: '',
     description: '',
   });
+  const [editPromotionsEnabled, setEditPromotionsEnabled] = useState(true);
+  const [editPromotionRows, setEditPromotionRows] = useState<PromotionFormRow[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [videoLoadError, setVideoLoadError] = useState(false);
@@ -158,6 +177,23 @@ const EpisodePlayerPage: React.FC = () => {
         title: safeVideo.title || '',
         description: safeVideo.description || '',
       });
+      setEditPromotionsEnabled(safeVideo.promotionsEnabled !== false);
+      if (safeVideo.inPlayerPromotions && safeVideo.inPlayerPromotions.length > 0) {
+        setEditPromotionRows(episodePromotionsToFormRows(safeVideo.inPlayerPromotions));
+      } else if (safeVideo.promoBannerTimestampsSec && safeVideo.promoBannerTimestampsSec.length > 0) {
+        setEditPromotionRows([
+          {
+            ...newPromotionRow(),
+            title: 'Dosh Mukti',
+            subtitle: 'Gemstones & jewellery',
+            imageUrl: '',
+            linkUrl: 'https://dushmuktiv-2-e.vercel.app/',
+            timestampsText: formatPromoTimestampsForField(safeVideo.promoBannerTimestampsSec),
+          },
+        ]);
+      } else {
+        setEditPromotionRows([]);
+      }
       
       if (safeVideo.variants.length === 0) {
         setError('No video variants (e.g., 480p.mp4) found. Check backend upload.');
@@ -243,7 +279,12 @@ const EpisodePlayerPage: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      await updateVideo(episodeId!, editForm);
+      await updateVideo(episodeId!, {
+        title: editForm.title,
+        description: editForm.description,
+        promotionsEnabled: editPromotionsEnabled,
+        inPlayerPromotions: promotionRowsToPayload(editPromotionRows),
+      } as any);
       alert('Episode updated!');
       setEditDialogOpen(false);
       fetchVideo();
@@ -449,13 +490,20 @@ const EpisodePlayerPage: React.FC = () => {
 
       
 
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Edit Episode</DialogTitle>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField fullWidth label="Title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} required />
             <TextField fullWidth label="Description" multiline rows={4} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+            <InPlayerPromotionsEditor
+              enabled={editPromotionsEnabled}
+              onEnabledChange={setEditPromotionsEnabled}
+              rows={editPromotionRows}
+              onRowsChange={setEditPromotionRows}
+              disabled={loading}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
