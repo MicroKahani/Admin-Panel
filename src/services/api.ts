@@ -262,6 +262,15 @@ export const updateCategoryOrder = (data: {
   items: { seasonId: string; order: number }[];
 }) => api.put('/videos/seasons/category-order', data);
 
+// Season tags (categories)
+export const getSeasonTags = (activeOnly = false) =>
+  api.get('/videos/seasons/tags', { params: activeOnly ? { active: true } : undefined });
+export const createSeasonTag = (name: string) => api.post('/videos/seasons/tags', { name });
+export const updateSeasonTag = (tagId: string, data: { name?: string; isActive?: boolean; order?: number }) =>
+  api.put(`/videos/seasons/tags/${tagId}`, data);
+export const deleteSeasonTag = (tagId: string) =>
+  api.delete(`/videos/seasons/tags/${tagId}`);
+
 // ========== Video/Episode Management ==========
 // export const getAllVideos = (params?: {
 //   type?: 'reel' | 'episode';

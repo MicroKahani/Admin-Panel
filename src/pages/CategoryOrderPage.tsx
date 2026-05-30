@@ -22,15 +22,9 @@ import {
   DragIndicator,
   CheckCircle,
 } from '@mui/icons-material';
-import { getAllSeasons, updateCategoryOrder } from '../services/api';
+import { getAllSeasons, updateCategoryOrder, getSeasonTags } from '../services/api';
 
-const CATEGORIES = [
-  'Drama & Emotions',
-  'Comedy Section',
-  'Thriller & Suspense',
-  'Religious & Devotional',
-  'Life Philosophy',
-] as const;
+// Dynamic categories fetched from backend
 
 interface SeasonItem {
   _id: string;
@@ -43,6 +37,7 @@ interface SeasonItem {
 
 const CategoryOrderPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
+  const [categories, setCategories] = useState<string[]>([]);
   const [allSeasons, setAllSeasons] = useState<any[]>([]);
   const [orderedItems, setOrderedItems] = useState<SeasonItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,13 +54,20 @@ const CategoryOrderPage: React.FC = () => {
       })
       .catch(() => setError('Failed to load seasons'))
       .finally(() => setLoading(false));
+    // fetch categories
+    getSeasonTags()
+      .then((res: any) => {
+        const data = res.data?.data || res.data || [];
+        setCategories(Array.isArray(data) ? data.map((t: any) => t.name) : []);
+      })
+      .catch(() => setCategories([]));
   }, []);
 
-  const selectedCategory = CATEGORIES[activeTab];
+  const selectedCategory = categories[activeTab] || '';
 
   // Rebuild the ordered list whenever category or data changes
   useEffect(() => {
-    const category = CATEGORIES[activeTab];
+    const category = categories[activeTab] || '';
     const filtered: SeasonItem[] = allSeasons
       .filter((s: any) => {
         if (!Array.isArray(s.tags)) return false;
@@ -177,7 +179,7 @@ const CategoryOrderPage: React.FC = () => {
           scrollButtons="auto"
           sx={{ borderBottom: '1px solid', borderColor: 'divider' }}
         >
-          {CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <Tab key={cat} label={cat} />
           ))}
         </Tabs>

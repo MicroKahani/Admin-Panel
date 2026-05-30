@@ -26,17 +26,26 @@ import {
   Select,
 } from '@mui/material';
 import { Add, Edit, Delete, Visibility, Public as PublicIcon, PublicOff as PublicOffIcon } from '@mui/icons-material';
-import { getAllSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonPublish } from '../services/api';
+import {
+  getAllSeasons,
+  createSeason,
+  updateSeason,
+  deleteSeason,
+  toggleSeasonPublish,
+  getSeasonTags,
+  createSeasonTag,
+  updateSeasonTag,
+  deleteSeasonTag,
+} from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-// 'Trending Now' is excluded — it is automatically determined by highest view count
-const AVAILABLE_TAGS = [
-  'Drama & Emotions',
-  'Comedy Section',
-  'Thriller & Suspense',
-  'Religious & Devotional',
-  'Life Philosophy',
-] as const;
+interface SeasonTag {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+}
 
 interface SeasonTagEntry {
   name: string;
@@ -59,6 +68,8 @@ const getTagNames = (tags?: (SeasonTagEntry | string)[]): string[] =>
   (tags || []).map((t) => typeof t === 'string' ? t : t.name);
 
 const WebSeriesPage: React.FC = () => {
+  const [availableTags, setAvailableTags] = useState<SeasonTag[]>([]);
+  const [newTagName, setNewTagName] = useState('');
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState<Season | null>(null);
@@ -70,6 +81,7 @@ const WebSeriesPage: React.FC = () => {
     seasonNumber: '',
     tags: [] as string[],
   });
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
@@ -83,7 +95,18 @@ const WebSeriesPage: React.FC = () => {
 
   useEffect(() => {
     fetchSeasons();
+    fetchTags();
   }, []);
+
+  const fetchTags = async () => {
+    try {
+      const res: any = await getSeasonTags();
+      const data = res.data?.data || res.data || [];
+      setAvailableTags(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Failed to fetch tags', e);
+    }
+  };
 
   // Filtered seasons logic
   const filteredSeasons = seasons.filter((season) => {
@@ -247,6 +270,65 @@ const WebSeriesPage: React.FC = () => {
     }
   };
 
+  const handleAddTag = async () => {
+    if (!newTagName.trim()) {
+      alert('Enter a category name');
+      return;
+    }
+    try {
+      await createSeasonTag(newTagName.trim());
+      setNewTagName('');
+      await fetchTags();
+      alert('Category added');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to add category');
+    }
+  };
+
+  const handleToggleTagActive = async (tag: SeasonTag) => {
+    try {
+      await updateSeasonTag(tag._id, { isActive: !tag.isActive });
+      setAvailableTags((prev) =>
+        prev.map((item) =>
+          item._id === tag._id ? { ...item, isActive: !item.isActive } : item
+        )
+      );
+    } catch (err: any) {
+      alert(err.response?.data?.message || `Failed to update category ${tag.name}`);
+    }
+  };
+
+  const openCategoryDialog = () => setCategoryDialogOpen(true);
+  const closeCategoryDialog = () => setCategoryDialogOpen(false);
+
+  const handleDeleteTag = async (tagId: string) => {
+    if (!window.confirm('Delete this category? This will remove the tag from all seasons.')) {
+      return;
+    }
+    try {
+      await deleteSeasonTag(tagId);
+      setAvailableTags((prev) => prev.filter((tag) => tag._id !== tagId));
+      alert('Category deleted');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete category');
+    }
+  };
+
+  const handleUpdateTagOrder = async (tagId: string, order: number) => {
+    if (!Number.isFinite(order) || order < 0) {
+      return;
+    }
+
+    try {
+      await updateSeasonTag(tagId, { order });
+      setAvailableTags((prev) =>
+        prev.map((tag) => (tag._id === tagId ? { ...tag, order } : tag))
+      );
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update category order');
+    }
+  };
+
   const handleDelete = async (seasonId: string) => {
     if (!window.confirm('Are you sure you want to delete this season? All episodes will remain but be unlinked.')) return;
 
@@ -290,15 +372,84 @@ const WebSeriesPage: React.FC = () => {
           Web Series Management
         </Typography>
         {hasPermission('write') && (
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add New WebSeries
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => handleOpenDialog()}
+            >
+              Add New WebSeries
+            </Button>
+            <Button variant="outlined" onClick={openCategoryDialog}>
+              Manage Categories
+            </Button>
+          </Box>
         )}
       </Box>
+
+      <Dialog open={categoryDialogOpen} onClose={closeCategoryDialog} maxWidth="md" fullWidth>
+        <DialogTitle>Manage Categories</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+            <TextField
+              label="New category"
+              size="small"
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              sx={{ flex: 1, minWidth: 240 }}
+            />
+            <Button variant="contained" onClick={handleAddTag} sx={{ height: 40 }}>
+              Add Category
+            </Button>
+          </Box>
+          <Stack spacing={1}>
+            {availableTags.length === 0 ? (
+              <Typography color="text.secondary">No categories found.</Typography>
+            ) : (
+              availableTags.map((tag) => (
+                <Box
+                  key={tag._id}
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto auto auto',
+                    gap: 12,
+                    alignItems: 'center',
+                    py: 1,
+                    px: 1,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography>{tag.name}</Typography>
+                  <TextField
+                    size="small"
+                    type="number"
+                    label="Order"
+                    value={tag.order}
+                    onChange={(e) => handleUpdateTagOrder(tag._id, Number(e.target.value))}
+                    inputProps={{ min: 0 }}
+                    sx={{ width: 120 }}
+                  />
+                  <Button
+                    size="small"
+                    variant={tag.isActive ? 'contained' : 'outlined'}
+                    color={tag.isActive ? 'success' : 'inherit'}
+                    onClick={() => handleToggleTagActive(tag)}
+                  >
+                    {tag.isActive ? 'Active' : 'Inactive'}
+                  </Button>
+                  <IconButton onClick={() => handleDeleteTag(tag._id)} color="error">
+                    <Delete />
+                  </IconButton>
+                </Box>
+              ))
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeCategoryDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Show error if exists */}
       {error && (
@@ -343,8 +494,8 @@ const WebSeriesPage: React.FC = () => {
                 onChange={(e) => setFilterTag(e.target.value)}
               >
                 <MenuItem value="all">All Tags</MenuItem>
-                {AVAILABLE_TAGS.map((tag) => (
-                  <MenuItem key={tag} value={tag}>{tag}</MenuItem>
+                {availableTags.map((tag) => (
+                  <MenuItem key={tag._id} value={tag.name}>{tag.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -608,19 +759,19 @@ const WebSeriesPage: React.FC = () => {
                 Home Screen Categories
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {AVAILABLE_TAGS.map((tag) => {
-                  const isSelected = formData.tags.includes(tag);
+                {availableTags.map((tag) => {
+                  const isSelected = formData.tags.includes(tag.name);
                   return (
                     <Chip
-                      key={tag}
-                      label={tag}
+                      key={tag._id}
+                      label={tag.name}
                       clickable
                       onClick={() => {
                         setFormData((prev) => ({
                           ...prev,
                           tags: isSelected
-                            ? prev.tags.filter((t) => t !== tag)
-                            : [...prev.tags, tag],
+                            ? prev.tags.filter((t) => t !== tag.name)
+                            : [...prev.tags, tag.name],
                         }));
                       }}
                       color={isSelected ? 'warning' : 'default'}
