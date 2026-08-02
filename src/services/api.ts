@@ -155,6 +155,7 @@ export async function uploadVideo(
   const res = await api.post('/admin/videos', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress,
+    timeout: 0, // large video uploads can take well past the global 30s API timeout
   });
   return res.data;
 }
